@@ -26,30 +26,30 @@ namespace utils {
 				sep(std::move(other.sep)), 
 				func(std::move(other.func)) { }
 
-			virtual IterT getBegin() const = 0;
-			virtual IterT getEnd() const = 0;
+			virtual IterT begin() const = 0;
+			virtual IterT end() const = 0;
 		};
 
 
 		template <typename IterT, typename Functor>
 		struct StringJoinIter : public Joinable<IterT, Functor> {
 			
-			IterT begin, end;
+			IterT m_begin, m_end;
 
 			StringJoinIter(
 					const std::string& 	sep, 
 					const IterT& 		begin, 
 					const IterT& 		end,
 					const Functor&		func
-				) : Joinable<IterT,Functor>(sep, func), begin(begin), end(end) { }
+				) : Joinable<IterT,Functor>(sep, func), m_begin(begin), m_end(end) { }
 			
-			IterT getBegin() const 	{ return begin; }
-			IterT getEnd() const 	{ return end; }
+			IterT begin() const { return m_begin; }
+			IterT end() const 	{ return m_end; }
 
 			StringJoinIter(StringJoinIter&& other) :
 				Joinable<IterT,Functor>(std::move(other)),
-				begin( other.begin ),
-				end( other.end ) { }
+				m_begin( other.m_begin ),
+				m_end( other.m_end ) { }
 
 		private:
 			StringJoinIter(const StringJoinIter& other) = delete;
@@ -73,8 +73,8 @@ namespace utils {
 				cont( std::move(other.cont) )
 			{ }
 
-			iter_type getBegin() const 			{ return cont.begin(); }
-			iter_type getEnd() const 			{ return cont.end(); }
+			iter_type begin() const 			{ return cont.begin(); }
+			iter_type end() const 			{ return cont.end(); }
 
 		private:
 			StringJoinCont(const StringJoinCont& other) = delete;
@@ -90,10 +90,7 @@ namespace utils {
 	 */
 	template <typename IterT, typename Functor=id<typename IterT::value_type>>
 	StringJoinIter<IterT,Functor> 
-		join(const IterT& begin, 
-			 const IterT& end, 
-			 const std::string& sep = ",", 
-			 const Functor& func=Functor()) 
+		join(const IterT& begin, const IterT& end, const std::string& sep = ",", const Functor& func=Functor()) 
 	{
 		return StringJoinIter<IterT,Functor>(sep, begin, end, func);
 	}
@@ -129,11 +126,11 @@ namespace std {
 	template <typename IterT, typename Functor>
 	std::ostream& operator<<(std::ostream& out, mpits::utils::Joinable<IterT,Functor>&& join) {
 
-		if (join.getBegin() == join.getEnd()) { return out; }
-		IterT it = join.getBegin();
+		if (join.begin() == join.end()) { return out; }
+		IterT it = join.begin();
 		out << join.func(*it);
 
-		while(++it != join.getEnd()) { out << join.sep << join.func(*it); }
+		while(++it != join.end()) { out << join.sep << join.func(*it); }
 		return out;
 	}
 

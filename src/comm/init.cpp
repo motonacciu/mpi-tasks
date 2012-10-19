@@ -25,6 +25,7 @@ namespace mpits {
 	}
 	
 	void finalize() {
+		LOG(INFO) << "\\@ Shutting down mpi-ts";
 		MPI_Finalize();
 	}
 
@@ -34,13 +35,14 @@ namespace mpits {
 		char other_hostname[(MAX_HOSTNAME_LENGTH+1)*nprocs];
 
 		LOG(DEBUG) << "Detecting hostname for this process:";
-		// invoke the 'hostname' command and read the value
+
+		/* invoke the 'hostname' command and read the value */
 		gethostname(hostname, MAX_HOSTNAME_LENGTH);
 		
 		std::string host(hostname); 
 		LOG(DEBUG) << "\tHostname: '" << hostname << "'";
 
-		// Collect all the hostnames from all the processes
+		/* Collect all the hostnames from all the processes */
 		MPI_Allgather( hostname, MAX_HOSTNAME_LENGTH+1, MPI_CHAR, other_hostname, 
 					   MAX_HOSTNAME_LENGTH+1, MPI_CHAR, MPI_COMM_WORLD );
 
@@ -69,13 +71,20 @@ namespace mpits {
 		LOG(DEBUG) << "Node communicator has " << node_comm_size << " nodes";
 
 		MPI_Comm_rank(node_comm, &node_comm_rank);
-		/* If the rank in the new communicator is 0 then this process will act as 
-		 * a node scheduler, therefore a communicator between scheduler is create
-		 * to connect them */
-		MPI_Comm_split(MPI_COMM_WORLD, node_comm_rank==0, 0, &sched_comm);
-		
-		LOG(DEBUG) << "";
 
+		/* 
+		 * If the rank in the new communicator is 0 then this process will act as 
+		 * a node scheduler, therefore a communicator between scheduler is create
+		 * to connect them 
+		 */
+		MPI_Comm_split(MPI_COMM_WORLD, node_comm_rank==0, 0, &sched_comm);
+
+		int sched_size;
+		MPI_Comm_size(sched_comm, &sched_size);
+		if (node_comm_rank == 0) {
+			LOG(DEBUG) << "Number of schedulers: " << sched_size;
+		}
+		
 		LOG(DEBUG) << "\\@ Initialization completed!";
 
 	}

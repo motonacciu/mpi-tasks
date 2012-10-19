@@ -15,7 +15,5 @@ int main(int argc, char* argv[]) {
 
 	LOG(INFO) << "MPI Task System";
 
-
-
 	mpits::finalize();
 }

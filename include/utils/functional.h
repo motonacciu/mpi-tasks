@@ -10,7 +10,10 @@ namespace utils {
 		const T& operator()(const T& t) const { return t; }
 	};
 
-
+	/** 
+	 * Functor which deref the passed content 
+	 * + specialization for possible pointer types 
+	 */
 	template <typename T>
 	struct deref;
 

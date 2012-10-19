@@ -6,6 +6,8 @@ add_definitions(-std=c++11)
 
 find_package(Boost)
 find_package(MPI REQUIRED)
+find_package(GTest REQUIRED)
+find_package(Threads REQUIRED)
 
 set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS})
 
@@ -18,11 +20,10 @@ include_directories(${CMAKE_SOURCE_DIR}/include )
 add_executable(mpits src/main.cpp src/comm/init.cpp)
 target_link_libraries(mpits ${MPI_LIBRARIES})
 
+
+
 ## Enable testing with Gtest
 enable_testing()
-
-find_package(GTest REQUIRED)
-find_package(Threads REQUIRED)
 
 include_directories(${GTEST_INCLUDE_DIRS})
 

@@ -83,8 +83,7 @@ namespace mpits {
 		MPI_Comm_size(sched_comm, &sched_size);
 		if (node_comm_rank == 0) {
 			LOG(DEBUG) << "Number of schedulers: " << sched_size;
-		}
-		
+		} 		
 		LOG(DEBUG) << "\\@ Initialization completed!";
 
 	}

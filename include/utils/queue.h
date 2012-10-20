@@ -1,17 +1,23 @@
 #pragma once
 
+#include <cassert>
+
 #include <thread>
+#include <chrono>
 #include <condition_variable>
 
 #include <deque>
 #include <algorithm>
+#include <iostream>
 
 namespace mpits {
 namespace utils {
 
+typedef std::chrono::time_point<std::chrono::high_resolution_clock> time_point;
+
 template <class T, template <typename...> class Cont=std::deque>
-typename Cont<T>::iterator FIFOPolicy(Cont<T>& queue) {
-	return queue.begin();
+std::pair<typename Cont<T>::iterator,time_point> FIFOPolicy(Cont<T>& queue) {
+	return { queue.begin(), time_point() };
 }
 
 /**
@@ -33,14 +39,17 @@ private:
 	
 	// Function prototype for selection policies which are applied to 
 	// select the next element to be pulled out from the queue. 
-	typedef std::function<QueueIterator (Queue&)> SelectionPolicy;
+	typedef std::function<std::pair<QueueIterator,time_point> (Queue&)> SelectionPolicy;
 	SelectionPolicy m_sel_policy;
 
 public:
-		
-	BlockingQueue(const SelectionPolicy& policy=FIFOPolicy<ValT,Cont>) : 
-		m_sel_policy(policy) { }
 
+	BlockingQueue() : m_sel_policy(SelectionPolicy(FIFOPolicy<ValT,Cont>)) { }
+
+	template <class Functor>
+	BlockingQueue(const Functor& fun=FIFOPolicy<ValT,Cont>) :
+		m_sel_policy(SelectionPolicy(fun)) { }
+		
 	/*
 	 * Insert an element into the queue's head, this method is non-blocking
 	 * as far as a max dimension for this queue is not specified.
@@ -87,7 +96,7 @@ public:
 		return m_queue.empty();
 	}
 
-	void set_policy(SelectionPolicy const& policy) { 
+	void set_policy(const SelectionPolicy& policy) { 
 		std::lock_guard<std::mutex> lock(m_mutex);
 		// Set the new policy
 		m_sel_policy = policy;
@@ -117,17 +126,17 @@ template <class ValT, template <typename...> class Cont>
 inline ValT BlockingQueue<ValT,Cont>::pop() {
 	// the lock guarantee the mutual exclusion execution
 	std::unique_lock<std::mutex> lock(m_mutex);
-	QueueIterator iter = m_sel_policy(m_queue);
+	auto iter = m_sel_policy(m_queue);
 
-	while (m_queue.empty() || iter == m_queue.end()) {
-		m_condition.wait(lock); // consumers are blocked
+	while (m_queue.empty() || iter.first == m_queue.end()) {
+		m_condition.wait_until(lock, iter.second); // consumers are blocked
 		iter = m_sel_policy(m_queue);
 	}
 
-	assert( iter != m_queue.end() );
+	assert( iter.first != m_queue.end() );
 	size_t initial_size = m_queue.size();
-	ValT ret = *iter;
-	m_queue.erase(iter);
+	ValT ret = *iter.first;
+	m_queue.erase(iter.first);
 	assert(initial_size-1 == m_queue.size());
 	return ret;
 }

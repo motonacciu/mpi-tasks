@@ -1,0 +1,3 @@
+EVENT(SHUTDOWN, bool)
+
+EVENT(TASK_CREATE, size_t)

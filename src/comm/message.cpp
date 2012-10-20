@@ -4,10 +4,12 @@ namespace mpits {
 namespace comm {
 
 //==== Message ====================================================================================
-Message Message::DummyMessage = Message();
+Message Message::DummyMessage;
 	
-bool Message::operator==(Message const& other) const { 
-	Bytes my_bytes = (m_pimpl?bytes():Bytes()), other_bytes = other.m_pimpl?other.bytes():Bytes();
+bool Message::operator==(const Message& other) const { 
+	Bytes my_bytes = (m_pimpl?bytes():Bytes()), 
+		  other_bytes = other.m_pimpl?other.bytes():Bytes();
+
 	return  m_msg_id == other.m_msg_id 
 			&& m_ep == other.m_ep 
 			&& (

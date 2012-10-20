@@ -29,7 +29,7 @@ struct msg_content_traits {
     	boost::archive::text_oarchive oa(ss);
     	oa << v;
     	std::string str = ss.str();
-    	return Bytes(str.begin(), str.end());
+    	return std::move(Bytes(str.begin(), str.end()));
 	}
 
 	static T from_bytes(const Bytes& bytes) {
@@ -37,7 +37,7 @@ struct msg_content_traits {
 		T ret;
 		boost::archive::text_iarchive ia(iss);
 		ia >> ret;
-		return ret;
+		return std::move(ret);
 	}
 
 };
@@ -83,8 +83,11 @@ private:
 	std::unique_ptr<Bytes>   m_content;
 	
 	Message(): m_comm(MPI_COMM_WORLD) { }
-	
+
+	//Message(const Message&) = delete;
+
 	void generate_content();
+
 public:
 	
 	static Message DummyMessage;
@@ -98,6 +101,13 @@ public:
 	{ 
 		generate_content(); 
 	}
+
+	Message(Message&& other) :
+		m_msg_id(other.m_msg_id), 
+		m_ep(other.m_ep),
+		m_comm(other.m_comm),
+		m_pimpl( std::move(other.m_pimpl) ),
+		m_content( std::move(other.m_content) ) { }
 	
 	inline const MessageType& msg_id() const { return m_msg_id; } 
 	

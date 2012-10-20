@@ -3,5 +3,4 @@
 //********************************************
 // MESSAGE ( MESSAGE_ID, CONTENT TYPE )
 //////////////////////////////////////////////
-
-MESSAGE( GROUP_CREATE, std::vector<int>)
+MESSAGE(GROUP_CREATE, std::vector<int>)

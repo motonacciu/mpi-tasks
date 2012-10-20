@@ -54,7 +54,9 @@ public:
 	 * Insert an element into the queue's head, this method is non-blocking
 	 * as far as a max dimension for this queue is not specified.
 	 */
-	void push(ValT const& val);
+	void push(ValT&& val);
+
+	// void push(const ValT& val);
 
 	/*
 	 * Extract one element from the queue's head, if the queue is empty this method
@@ -111,13 +113,24 @@ public:
 
 };
 
+//template <class ValT, template <typename...> class Cont>
+//inline void BlockingQueue<ValT,Cont>::push(const ValT& val) {
+//	// the lock guarantee the mutual exclusion execution
+//	std::lock_guard<std::mutex> lock(m_mutex);
+//
+//	size_t initial_size = m_queue.size();
+//	m_queue.emplace_back(val);
+//	assert(initial_size+1 == m_queue.size());
+//	m_condition.notify_one(); // notify consumers
+//}
+
 template <class ValT, template <typename...> class Cont>
-inline void BlockingQueue<ValT,Cont>::push(ValT const& val) {
+inline void BlockingQueue<ValT,Cont>::push(ValT&& val) {
 	// the lock guarantee the mutual exclusion execution
 	std::lock_guard<std::mutex> lock(m_mutex);
 
 	size_t initial_size = m_queue.size();
-	m_queue.push_back(val);
+	m_queue.emplace_back(std::move(val));
 	assert(initial_size+1 == m_queue.size());
 	m_condition.notify_one(); // notify consumers
 }
@@ -135,10 +148,10 @@ inline ValT BlockingQueue<ValT,Cont>::pop() {
 
 	assert( iter.first != m_queue.end() );
 	size_t initial_size = m_queue.size();
-	ValT ret = *iter.first;
+	ValT ret = std::move(*iter.first);
 	m_queue.erase(iter.first);
 	assert(initial_size-1 == m_queue.size());
-	return ret;
+	return std::move(ret);
 }
 
 } // end utils namespace 

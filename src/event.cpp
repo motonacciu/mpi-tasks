@@ -94,7 +94,7 @@ void EventHandler::operator()() {
 #endif
 	while(true) {
 		// LOG(DEBUG) << "{@EH} Waiting for event";
-		Event evt = m_event_queue.pop();
+		Event&& evt = m_event_queue.pop();
 		LOG(DEBUG) << "{@EH} EVENT '" << Event::evtToStr(evt.event_id());
 
 		if (evt.event_id()==Event::SHUTDOWN) { break; }

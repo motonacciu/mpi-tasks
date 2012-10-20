@@ -8,7 +8,9 @@
 #include <chrono>
 #include <functional>
 
-#include <boost/any.hpp>
+#include "utils/any.h"
+
+#include "comm/message.h"
 
 namespace mpits {
 
@@ -20,33 +22,46 @@ struct Event {
 		#undef EVENT
 	};
 	
-	Event(EventType const& 	evt, 
-		  boost::any const& content, 
+	Event(const EventType& 	evt, 
+		  utils::any&&      content, 
 		  utils::time_point time = std::chrono::high_resolution_clock::now()) 
 	: 
-		m_event_id(evt), m_time(time), m_content(content) { }
+		m_event_id(evt), m_time(time), m_content(std::move(content)) { }
 
-	EventType const& event_id() const { return m_event_id; }
+	Event(Event&& other) :
+		m_event_id(other.m_event_id), 
+		m_time(other.m_time), 
+		m_content(std::move(other.m_content)) { }
+
+	Event& operator=(Event&& other) {
+		m_event_id = other.m_event_id;
+		m_time = other.m_time;
+		m_content = std::move(other.m_content);
+		return *this;
+	}
+
+	const EventType& event_id() const { return m_event_id; }
 
 	const utils::time_point& schedule_time() const { return m_time; }
 
 	template <class T>
-	T const & content() const { 
-		return boost::any_cast<const T&>(m_content); 
+	const T& content() const { 
+		return m_content.as<T>(); 
 	}
 	
 	static std::string evtToStr(EventType const& evt);
+
 private:
 	EventType  			m_event_id;
 	utils::time_point 	m_time;
-	boost::any 			m_content;
+	utils::any 			m_content;
 };
 
 
-std::pair<std::deque<Event>::iterator, utils::time_point> 
-TimePriorityPolicy(std::deque<Event>& queue) {
+std::pair<std::vector<Event>::iterator, utils::time_point> 
+TimePriorityPolicy(std::vector<Event>& queue) {
 
-	std::deque<Event>::iterator next = queue.begin();
+	std::vector<Event>::iterator next = queue.begin();
 	utils::time_point curr_time = std::chrono::high_resolution_clock::now();
 
 	bool found=false;
@@ -61,7 +76,7 @@ TimePriorityPolicy(std::deque<Event>& queue) {
 	return { found ? next : queue.end(), curr_time };
 }
 
-typedef utils::BlockingQueue<Event, std::deque> EventQueue;
+typedef utils::BlockingQueue<Event, std::vector> EventQueue;
 
 
 
@@ -107,7 +122,12 @@ struct EventHandler {
 		}
 
 		// create the Handle Pair
-		auto handlePtr = std::make_shared<HandlePair>(++m_handler_count, handle, filter);
+		auto handlePtr = std::make_shared<HandlePair>(
+							++m_handler_count, 
+							std::move(handle), 
+							filter
+						);
+
 		fit->second.push_back( handlePtr );
 	
 		m_handle_reg.insert( {m_handler_count, evt} );

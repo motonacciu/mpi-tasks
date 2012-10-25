@@ -78,12 +78,16 @@ void EventHandler::disconnect_nts(HandleID const& id) {
 }
 
 void EventHandler::disconnect(EventHandler::HandleID const& id) {
+#ifdef USE_SYNCH
 	std::lock_guard<std::mutex> lock(m_mutex); 
+#endif
 	disconnect_nts(id);
 }
 
 void EventHandler::process_event(Event const& evt) {
+#ifdef USE_SYNCH
 	std::lock_guard<std::mutex> lock(m_mutex); 
+#endif
 	auto fit = m_handlers.find(evt.event_id());
 	
 	if (fit == m_handlers.end()) { return ; }

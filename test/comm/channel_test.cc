@@ -18,24 +18,38 @@ TEST(Channel, Receive) {
 	Logger::get(std::cout, DEBUG);
 
 	EventHandler handler;
-
 	std::thread h(std::ref(handler));
 
 	ReceiveChannel 	rchan(handler);
 	SendChannel 	schan(handler);
 	handler.queue().push( 
-			Event(Event::RECV_CHN_PROBE, utils::any(10ul, std::vector<MPI_Comm>({MPI_COMM_WORLD}))) );
-
+			Event(Event::RECV_CHN_PROBE, 
+				  utils::any(10ul, std::vector<MPI_Comm>({MPI_COMM_WORLD}))) 
+			);
 
 	int rank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	if (rank==0) {
 		handler.queue().push(
-			Event(Event::SEND_MSG, any(Message(Message::TEST, 1, MPI_COMM_WORLD, 1)))
+			Event(Event::SEND_MSG, 
+				  any(Message(Message::TEST, 1, MPI_COMM_WORLD, 1))
+			)
 		);
 	} 
 
-	sleep(2);
+	sleep(4);
+
+	if (rank==1) {
+		handler.queue().push(
+			Event(Event::SEND_MSG, 
+				  any(Message(Message::TEST, 0, MPI_COMM_WORLD, 1))
+			)
+		);
+	} 
+
+
+	sleep(4);
+
 	handler.queue().push( Event(Event::SHUTDOWN, true) );
 	h.join();
 

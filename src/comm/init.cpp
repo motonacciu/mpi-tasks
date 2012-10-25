@@ -11,7 +11,6 @@
 
 namespace mpits {
 
-
 	void init() {
 
 		MPI_Init(NULL, NULL);

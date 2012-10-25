@@ -63,9 +63,9 @@ public:
 
 	template <class T>
 	const T& as() const {
-		m_ptr->print();
-		if (typeid(T) == m_ptr->type())
+		if (typeid(T) == m_ptr->type()) {
 			return static_cast<const container_impl<T>*>(m_ptr.get())->value();
+		}
 		assert(false && "Invalid cast");
 	}
 

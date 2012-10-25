@@ -25,7 +25,6 @@ struct SendChannel {
 	
 	bool operator()(const Message& msg) {
 		
-		LOG(DEBUG) << "sending";
 		MPI_Send(const_cast<unsigned char*>(&msg.bytes().front()), 
 			 msg.size(), 
 			 MPI_BYTE, 
@@ -65,8 +64,6 @@ public:
 	bool operator()(bool) { shutdown = true; }
 	
 	bool operator()(const size_t& delay, const std::vector<MPI_Comm>& comms) {
-
-		LOG(DEBUG) << "DELAY:" << delay;
 
 		for(MPI_Comm cur : comms) {
 

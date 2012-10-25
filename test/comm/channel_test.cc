@@ -27,14 +27,14 @@ TEST(Channel, Receive) {
 			Event(Event::RECV_CHN_PROBE, utils::any(10ul, std::vector<MPI_Comm>({MPI_COMM_WORLD}))) );
 
 
-//	int rank;
-//	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-//	if (rank==0) {
-//		handler.queue().push(
-//			Event(Event::SEND_MSG, any(Message(Message::TEST, 1, MPI_COMM_WORLD, 1)))
-//		);
-//	} 
-//
+	int rank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	if (rank==0) {
+		handler.queue().push(
+			Event(Event::SEND_MSG, any(Message(Message::TEST, 1, MPI_COMM_WORLD, 1)))
+		);
+	} 
+
 	sleep(2);
 	handler.queue().push( Event(Event::SHUTDOWN, true) );
 	h.join();

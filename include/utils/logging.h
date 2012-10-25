@@ -72,7 +72,7 @@ struct TimeSpec<FULL> {
 template <>
 struct TimeSpec<TIME> {
 	static void format(std::ostream& out, const Ctx& ctx) {
-		out << boost::posix_time::second_clock::local_time().time_of_day();
+		out << boost::posix_time::microsec_clock::local_time().time_of_day();
 	}
 };
 
@@ -295,9 +295,6 @@ using namespace mpits::log;
 
 // Build the context used by the formatter
 #define MAKE_CONTEXT			Ctx({ boost::any((const char*)__FILE__) })
-
-// Creates the object used to format the output of the logger.
-//#define MAKE_FORMAT(LEVEL) 		Formatter<' ', LevelSpec<LEVEL>, Formatter<':', FileNameSpec<0>, LineSpec<__LINE__>>>
 
 // Creates the object used to format the output of the logger.
 #define MAKE_FORMAT(LEVEL) 		Formatter<' ', \

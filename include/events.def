@@ -1,8 +1,9 @@
 
-EVENT(SHUTDOWN, bool)
+EVENT(SHUTDOWN, 		bool)
 
-EVENT(TASK_CREATE, size_t)
+EVENT(TASK_CREATE, 		int)
 
-EVENT(RECV_CHN_PROBE, std::vector<MPI_Comm>)
-EVENT(MSG_RECVD, comm::Message)
+EVENT(RECV_CHN_PROBE, 	size_t, std::vector<MPI_Comm>)
+EVENT(SEND_MSG, 		comm::Message)
+EVENT(MSG_RECVD, 		comm::Message)
 

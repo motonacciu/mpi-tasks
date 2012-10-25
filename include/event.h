@@ -17,7 +17,7 @@ namespace mpits {
 struct Event { 
 
 	enum EventType { 
-		#define EVENT(EVT_ID, CONTENT_TYPE) EVT_ID,
+		#define EVENT(EVT_ID, ...) EVT_ID,
 		#include "events.def"
 		#undef EVENT
 	};
@@ -79,27 +79,26 @@ TimePriorityPolicy(std::vector<Event>& queue) {
 typedef utils::BlockingQueue<Event, std::vector> EventQueue;
 
 
-
-template <class ET>
-bool default_filter(ET const&) { return true; }
-
-
+template <class... T>
+struct default_filter {
+	bool operator()(const T&...) { return true; }
+};
 
 
 struct EventHandler {
 
-	typedef std::function<bool (boost::any const& evt)> EventHandle;
-	typedef std::function<bool (boost::any const& evt)> EventFilter;
+	typedef std::function<bool (const utils::any& evt)> EventHandle;
+	typedef std::function<bool (const utils::any& evt)> EventFilter;
 	
 	typedef size_t HandleID;
 		
-	typedef std::tuple<HandleID, boost::any, boost::any>	HandlePair;
-	typedef std::shared_ptr<HandlePair> 					HandlePairPtr; 
+	typedef std::tuple<HandleID, utils::any, utils::any> HandlePair;
+	typedef std::shared_ptr<HandlePair> 				HandlePairPtr; 
 	
-	typedef std::vector<HandlePairPtr> 						HandlersList;
-	typedef std::map<Event::EventType, HandlersList> 		HandleMap;
+	typedef std::vector<HandlePairPtr> 					HandlersList;
+	typedef std::map<Event::EventType, HandlersList> 	HandleMap;
 	
-	typedef std::map<HandleID, Event::EventType>			HanlderRegister;
+	typedef std::map<HandleID, Event::EventType>		HanlderRegister;
 
 	EventHandler() :
 		m_event_queue(TimePriorityPolicy), 
@@ -107,10 +106,19 @@ struct EventHandler {
 
 	EventHandler(const EventHandler& other) = delete;
 	
-	template <class ET>
+	template <class... T>
+	HandleID connect(const Event::EventType& 					evt,
+	 			 	 const std::function<bool (const T&...)>& 	handle) 
+	{
+		return connect(evt, handle, 
+					   std::function<bool (const T&...)>(default_filter<T...>())
+					  );
+	}
+
+	template <class... T>
 	HandleID connect(const Event::EventType& 					evt, 
-	 			 	 const std::function<bool (const ET&)>& 	handle, 
-				 	 const std::function<bool (const ET&)>& 	filter = &default_filter<ET> ) 
+	 			 	 const std::function<bool (const T&...)>& 	handle, 
+				 	 const std::function<bool (const T&...)>& 	filter ) 
 	{
 		std::lock_guard<std::mutex> lock(m_mutex); 
 		LOG(DEBUG) << "{@EH} Connecting event lister for '" << Event::evtToStr(evt);
@@ -125,7 +133,7 @@ struct EventHandler {
 		auto handlePtr = std::make_shared<HandlePair>(
 							++m_handler_count, 
 							std::move(handle), 
-							filter
+							std::move(filter)
 						);
 
 		fit->second.push_back( handlePtr );

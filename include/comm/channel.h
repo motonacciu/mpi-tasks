@@ -11,8 +11,32 @@
 namespace mpits {
 namespace comm { 
 
-class SendChannel {
+struct SendChannel {
 
+	SendChannel(EventHandler& evt) 
+	{
+		evt.connect(
+			Event::SEND_MSG, 
+			std::function<bool (const Message& msg)>(std::ref(*this))
+		);
+
+		
+	}
+	
+	bool operator()(const Message& msg) {
+		
+		LOG(DEBUG) << "sending";
+		MPI_Send(const_cast<unsigned char*>(&msg.bytes().front()), 
+			 msg.size(), 
+			 MPI_BYTE, 
+			 msg.endpoint(), 
+			 msg.msg_id(), 
+			 msg.comm()
+		);
+
+		return false;
+
+	}
 
 };
 
@@ -20,18 +44,29 @@ class SendChannel {
 class ReceiveChannel {
 	
 	EventQueue& m_queue;
+	bool shutdown;
 
 public:
 
-	ReceiveChannel(EventHandler& evt) : m_queue(evt.queue()) 
+	ReceiveChannel(EventHandler& evt) : m_queue(evt.queue()), shutdown(false) 
 	{
 		evt.connect(
 			Event::RECV_CHN_PROBE, 
-			std::function<bool (const std::vector<MPI_Comm>&)>(std::ref(*this))
+			std::function<bool (const size_t&, const std::vector<MPI_Comm>&)>(std::ref(*this))
 		);
+
+		evt.connect(
+			Event::SHUTDOWN, 
+			std::function<bool (const bool&)>(std::ref(*this))
+		);
+
 	}
+
+	bool operator()(bool) { shutdown = true; }
 	
-	bool operator()(const std::vector<MPI_Comm>& comms) {
+	bool operator()(const size_t& delay, const std::vector<MPI_Comm>& comms) {
+
+		LOG(DEBUG) << "DELAY:" << delay;
 
 		for(MPI_Comm cur : comms) {
 
@@ -65,10 +100,18 @@ public:
 					}
 				}();
 			
-				//m_queue.push( Event(Event::MSG_RECVD, std::move(msg)) );
+				m_queue.push( Event(Event::MSG_RECVD, utils::any(std::move(msg))) );
+
 			}
 
+			
 		}
+		if (!shutdown)
+			m_queue.push( Event(Event::RECV_CHN_PROBE, 
+					utils::any(delay+50, std::vector<MPI_Comm>(comms)), 
+					std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(delay+50)
+			) );
+
 		return false;
 	}
 

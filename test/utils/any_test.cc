@@ -14,6 +14,11 @@ TEST(Any, Simple) {
 	EXPECT_EQ(10, val);
 	
 	std::string s("hello, world!");
-	any b(s);
-	EXPECT_EQ(s, b.as<std::string>());
+	any b(std::move(s));
+	EXPECT_EQ("hello, world!", b.as<std::string>());
+
+	any c(10,20,30);
+	auto t1 = std::make_tuple(10,20,30);
+	auto t2 = c.as<std::tuple<int,int,int>>();
+	EXPECT_EQ(t1, t2);
 }

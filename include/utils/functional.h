@@ -33,5 +33,10 @@ namespace utils {
 		const T& operator()(const std::unique_ptr<T> t) const { return *t; }
 	};
 
+	template <typename RetTy, typename... T>
+	struct constify {
+		typedef std::function<RetTy (const T&...)> type;
+	};
+
 } // end utils namespace 
 } // end mpits namespace 

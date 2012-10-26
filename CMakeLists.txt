@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 
 project(mpits)
 
-add_definitions(-std=c++0x)
+add_definitions(-std=c++0x -g)
 
 find_package(Boost REQUIRED serialization)
 find_package(MPI REQUIRED)

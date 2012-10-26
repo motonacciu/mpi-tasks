@@ -7,6 +7,8 @@
 #include "utils/logging.h"
 #include "utils/string.h"
 
+#include "worker.h"
+
 #define MAX_HOSTNAME_LENGTH 25
 
 namespace mpits {
@@ -20,7 +22,11 @@ namespace mpits {
 
 		int nprocs;
 		MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-		assign_roles(nprocs);
+		auto role = assign_roles(nprocs);
+
+		if (role->type() == Role::RT_WORKER) {
+			static_cast<Worker*>(role.get())->do_work();
+		}
 	}
 	
 	void finalize() {
@@ -28,7 +34,7 @@ namespace mpits {
 		MPI_Finalize();
 	}
 
-	void assign_roles(unsigned nprocs) {
+	std::unique_ptr<Role> assign_roles(unsigned nprocs) {
 
 		char* hostname = new char[MAX_HOSTNAME_LENGTH+1];
 		char other_hostname[(MAX_HOSTNAME_LENGTH+1)*nprocs];
@@ -78,13 +84,15 @@ namespace mpits {
 		 */
 		MPI_Comm_split(MPI_COMM_WORLD, node_comm_rank==0, 0, &sched_comm);
 
-		int sched_size;
-		MPI_Comm_size(sched_comm, &sched_size);
-		if (node_comm_rank == 0) {
-			LOG(DEBUG) << "Number of schedulers: " << sched_size;
-		} 		
 		LOG(DEBUG) << "\\@ Initialization completed!";
 
+		if (node_comm_rank==0) {
+			return std::move( std::unique_ptr<Role>( 
+								new Role(Role::RT_SCHEDULER) 
+							) );
+		}
+
+		return std::move( std::unique_ptr<Worker>( new Worker(node_comm) ) );
 	}
 
 }

@@ -84,7 +84,7 @@ private:
 	
 	Message(): m_comm(MPI_COMM_WORLD) { }
 
-	//Message(const Message&) = delete;
+	Message(const Message&) = delete;
 
 	void generate_content();
 

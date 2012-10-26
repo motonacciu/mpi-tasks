@@ -3,7 +3,7 @@
 
 #include <algorithm>
 
-#define MAX_DELAY 250ul
+#define MAX_DELAY 300ul
 
 namespace mpits {
 namespace comm {

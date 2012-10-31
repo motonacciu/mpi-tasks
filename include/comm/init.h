@@ -6,8 +6,6 @@
 
 namespace mpits {
 
-	void finalize();
-
 	std::unique_ptr<Role> assign_roles(unsigned nprocs);
 
 } // end mpits namespace 

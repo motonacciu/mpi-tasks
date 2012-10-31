@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
 
 	mpits::make_group({2,4,6});
 
-	sleep(10);
+	sleep(5);
 
 	mpits::finalize();
 }

@@ -31,14 +31,14 @@ void init() {
 
 	if (role.type() == Role::RT_WORKER) {
 		role.do_work();
-		return; 
+		exit(0);
 	}
 
 	// this code is executed by the scheduler 
 	if (rank != 0) {
 		EventHandler handler;
 		handler();
-		return;
+		exit(0);
 	}
 
 
@@ -50,17 +50,30 @@ void make_group(const std::vector<int>& ranks) {
 	auto& r = static_cast<Scheduler&>(get_role());
 	
 	for(int idx : ranks) {
-		kill(r.pid_list()[idx-1].second, SIGINT);
+		kill(r.pid_list()[idx-1].second, SIGCONT);
 		MPI_Send(const_cast<int*>(&ranks.front()), ranks.size(), 
 				 MPI_INT, r.pid_list()[idx-1].first, 1, r.node_comm()
 		);
 	}
 	
-	MPI_Barrier(r.node_comm());
-
-	
 
 }
 
+void finalize() {
+		
+	// find pids 
+	auto& r = static_cast<Scheduler&>(get_role());
+	
+	for(auto& idxs : r.pid_list()) {
+		kill(idxs.second, SIGCONT);
+		MPI_Send(NULL, 0, MPI_BYTE, idxs.first, 0, r.node_comm());
+	}
+
+	r.cmd_queue().push( Event(Event::SHUTDOWN,true)  );
+	r.join();
+
+	MPI_Finalize();
+	
+}
 
 } // end namespace mpits 

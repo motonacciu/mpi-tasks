@@ -65,24 +65,26 @@ namespace mpits {
 
 void Worker::do_work() {
 
+	signal(SIGCONT, call_back);
 	LOG(INFO) << "Starting worker";
 
 	bool stop=false;
-	
-	signal(SIGINT, call_back);
 
 	while (!stop) {
+		LOG(INFO) << "Sleep";
 
 		pause();
-
+		
 		MPI_Status status;
 		MPI_Probe(0, MPI_ANY_TAG, node_comm(), &status);
 
 		switch (status.MPI_TAG) {
 
 		case 0:
+		{
 			stop = true;
 			break;
+		}
 
 		case 1: 
 		{
@@ -98,9 +100,16 @@ void Worker::do_work() {
 			LOG(INFO) << "MAKING GROUP " << utils::join(ranks);
 			// Create group
 			MPI_Comm comm = make_group(*this,ranks);
-			LOG(INFO) << "GROUP FORMED!";
-			MPI_Barrier(node_comm());
+			MPI_Barrier(comm);
 
+			int new_rank;
+			MPI_Comm_rank(comm, &new_rank);
+			if (new_rank==0) {
+				LOG(INFO) << "GROUP FORMED!";
+			}
+			
+			// Do-work TODO
+			MPI_Comm_free(&comm);
 			break;
 		}
 
@@ -111,6 +120,9 @@ void Worker::do_work() {
 	}
 
 	LOG(INFO) << "Worker end";
+
+	MPI_Finalize();
+
 }
 
 } // end namespace mpits 

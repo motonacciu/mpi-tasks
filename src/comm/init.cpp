@@ -15,11 +15,6 @@
 
 namespace mpits {
 
-	void finalize() {
-		LOG(INFO) << "\\@ Shutting down mpi-ts";
-		MPI_Finalize();
-	}
-
 	std::unique_ptr<Role> assign_roles(unsigned nprocs) {
 
 		char* hostname = new char[MAX_HOSTNAME_LENGTH+1];

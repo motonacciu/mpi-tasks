@@ -40,7 +40,13 @@ struct Scheduler : public Role {
 	const Pids& pid_list() const { return m_pids; }
 
 	void do_work() { }
-		
+	
+	EventQueue& cmd_queue() { return m_handler.queue(); }
+
+	void join() { m_thr.join(); }
+
+	~Scheduler() { }
+
 	Scheduler& operator=(const Scheduler&) = delete;
 	Scheduler(const Scheduler&) = delete;
 

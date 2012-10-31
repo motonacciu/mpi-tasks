@@ -4,6 +4,8 @@
 #include "utils/logging.h"
 #include "utils/string.h"
 
+#include <dlfcn.h>
+
 namespace {
 //
 // taken the idea from:
@@ -98,18 +100,68 @@ void Worker::do_work() {
 					 status.MPI_TAG, node_comm(), MPI_STATUS_IGNORE);
 
 			LOG(INFO) << "MAKING GROUP " << utils::join(ranks);
+
 			// Create group
 			MPI_Comm comm = make_group(*this,ranks);
 			MPI_Barrier(comm);
 
+			char* kernel_name = nullptr;
+
 			int new_rank;
 			MPI_Comm_rank(comm, &new_rank);
+
 			if (new_rank==0) {
 				LOG(INFO) << "GROUP FORMED!";
+
+				// retrieve work 
+				MPI_Status status;
+				MPI_Probe(0, MPI_ANY_TAG, node_comm(), &status); 
+
+				assert(status.MPI_TAG == 0);
+				MPI_Get_count(&status, MPI_CHAR, &size);
+				kernel_name = new char[size];
+
+				MPI_Recv(kernel_name, size, MPI_CHAR, 0, 0, node_comm(), MPI_STATUS_IGNORE);
+
+				MPI_Bcast(&size, 1, MPI_INT, 0, comm);
+				MPI_Bcast(kernel_name, size, MPI_CHAR, 0, comm);
+			} else {
+				MPI_Bcast(&size, 1, MPI_INT, 0, comm);
+				kernel_name = new char[size];
+				MPI_Bcast(kernel_name, size, MPI_CHAR, 0, comm);
 			}
-			
+
+			LOG(INFO) << "Recvd kernel '" << kernel_name << "'";
 			// Do-work TODO
+			//
+			
+			LOG(INFO) << "Opening kernel.so...";
+ 			void* handle = dlopen("./kernels.so", RTLD_LAZY);
+			if (!handle) {
+		        LOG(ERROR) << "Cannot open library: " << dlerror();
+				exit(1);
+		    }
+
+			typedef void (*kernel_t)(MPI_Comm);
+
+ 			// reset errors
+		 	dlerror();
+			kernel_t kernel = (kernel_t) dlsym(handle, kernel_name);
+
+ 			const char *dlsym_error = dlerror();
+			if (dlsym_error) {
+    			LOG(ERROR) << "Cannot load symbol '" << kernel_name << "': " << dlsym_error;
+
+ 	    	   dlclose(handle);
+    		}
+    
+ 			// use it to do the calculation
+			LOG(INFO) << "Calling '" << kernel_name << "'...";
+			kernel(comm);
+
 			MPI_Comm_free(&comm);
+			delete[] kernel_name;
+
 			break;
 		}
 

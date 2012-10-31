@@ -55,7 +55,9 @@ void make_group(const std::vector<int>& ranks) {
 				 MPI_INT, r.pid_list()[idx-1].first, 1, r.node_comm()
 		);
 	}
-	
+
+	// Send the work-item (functor) to worker 0 inside the newly generated group
+	MPI_Send(const_cast<char*>("kernel_1"), 12, MPI_CHAR, ranks.front(), 0, r.node_comm()); 
 
 }
 

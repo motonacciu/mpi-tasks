@@ -2,13 +2,14 @@
 #include "worker.h"
 
 #include "utils/logging.h"
+#include "utils/string.h"
 
-namespace mpits {
+namespace {
 //
 // taken the idea from:
 // 	https://svn.mcs.anl.gov/repos/mpi/mpich2/trunk/test/mpi/spawn/pgroup_intercomm_test.c
 //
-MPI_Comm make_group(const Worker& worker, const std::vector<int>& ranks) {
+MPI_Comm make_group(const mpits::Worker& worker, const std::vector<int>& ranks) {
 	
 	/* CASE: Group size 0 */
 	assert (!ranks.empty() );
@@ -25,20 +26,23 @@ MPI_Comm make_group(const Worker& worker, const std::vector<int>& ranks) {
 
 	MPI_Comm pgroup = MPI_COMM_SELF;
 
-	for(int merge_size = 1; merge_size < ranks.size(); merge_size *= 2) {
+	for(unsigned merge_size = 1; merge_size < ranks.size(); merge_size *= 2) {
 	   
-		int gid = idx / merge_size;
-
+		unsigned gid = idx / merge_size;
  		MPI_Comm pgroup_old = pgroup, inter_pgroup;
 
 		if (gid % 2 == 0) {
 			/* Check if right partner doesn't exist */
 			if ((gid+1)*merge_size >= ranks.size()) { continue; }
 
-			MPI_Intercomm_create(pgroup, 0, MPI_COMM_WORLD, ranks[(gid+1)*merge_size], 0, &inter_pgroup);
+			MPI_Intercomm_create(pgroup, 0, MPI_COMM_WORLD, ranks[(gid+1)*merge_size], 
+								 0, &inter_pgroup);
+
 			MPI_Intercomm_merge(inter_pgroup, 0 /* LOW */, &pgroup);
 		} else {
-			MPI_Intercomm_create(pgroup, 0, MPI_COMM_WORLD, ranks[(gid-1)*merge_size], 0, &inter_pgroup);
+			MPI_Intercomm_create(pgroup, 0, MPI_COMM_WORLD, ranks[(gid-1)*merge_size], 
+								 0, &inter_pgroup);
+
 			MPI_Intercomm_merge(inter_pgroup, 1 /* HIGH */, &pgroup);
 		}
 
@@ -50,25 +54,61 @@ MPI_Comm make_group(const Worker& worker, const std::vector<int>& ranks) {
 	return pgroup;
 }
 
+void call_back(int sig) {
+	LOG(INFO) << "Time to wakeup";
+}
+
+} // end anonymous namespace 
+
+namespace mpits {
+
 
 void Worker::do_work() {
 
 	LOG(INFO) << "Starting worker";
 
-//	pause();
-//
-//	int cmd;
-//	MPI_Recv(&cmd, 1, MPI_INT, 0, 0, node_comm(), MPI_STATUS_IGNORE);
-//
-//	if (cmd == 0) {
-//		// Create group
-		MPI_Comm comm = make_group(*this, {1,2,3});
-		int m;
-		if ( node_rank()==1 ) { m=10; }	
-		MPI_Bcast(&m, 1, MPI_INT, 0, comm);
+	bool stop=false;
+	
+	signal(SIGINT, call_back);
 
-		LOG(INFO) << m;
-//	}
+	while (!stop) {
+
+		pause();
+
+		MPI_Status status;
+		MPI_Probe(0, MPI_ANY_TAG, node_comm(), &status);
+
+		switch (status.MPI_TAG) {
+
+		case 0:
+			stop = true;
+			break;
+
+		case 1: 
+		{
+			int size;
+			// we expect to receive a list of integers representing 
+			// the process ranks which will form the group 
+			MPI_Get_count(&status, MPI_INT, &size);
+
+			std::vector<int> ranks(size);
+			MPI_Recv(&ranks.front(), size, MPI_INT, 0, 
+					 status.MPI_TAG, node_comm(), MPI_STATUS_IGNORE);
+
+			LOG(INFO) << "MAKING GROUP " << utils::join(ranks);
+			// Create group
+			MPI_Comm comm = make_group(*this,ranks);
+			LOG(INFO) << "GROUP FORMED!";
+			MPI_Barrier(node_comm());
+
+			break;
+		}
+
+		default:
+			assert(false);
+		}
+
+	}
 
 	LOG(INFO) << "Worker end";
 }

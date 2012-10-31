@@ -1,7 +1,7 @@
 
 #include <iostream>
 
-#include "comm/init.h"
+#include "task.h"
 
 #include "utils/logging.h"
 #include "utils/string.h"
@@ -14,6 +14,10 @@ int main(int argc, char* argv[]) {
 	mpits::init();
 
 	LOG(INFO) << "MPI Task System";
+
+	mpits::make_group({2,4,6});
+
+	sleep(10);
 
 	mpits::finalize();
 }

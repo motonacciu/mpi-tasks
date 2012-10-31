@@ -14,18 +14,12 @@ struct Role {
 
 	const RoleType& type() const { return m_type; }
 
+	virtual void do_work() = 0;
+
 	virtual ~Role() { }
 
 private:
 	RoleType m_type;
-};
-
-
-class Context {
-
-public:
-
-
 };
 
 } // end mpits namespace 

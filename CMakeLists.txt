@@ -22,6 +22,8 @@ file(GLOB_RECURSE sources src/*.cpp)
 
 add_library(mpits_lib SHARED ${sources})
 
+add_library(kernels SHARED kernels.cpp)
+
 add_executable(mpits main.cpp)
 target_link_libraries(mpits mpits_lib ${MPI_LIBRARIES} ${Boost_LIBRARIES})
 

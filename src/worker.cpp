@@ -136,7 +136,7 @@ void Worker::do_work() {
 			//
 			
 			LOG(INFO) << "Opening kernel.so...";
- 			void* handle = dlopen("./kernels.so", RTLD_LAZY);
+ 			void* handle = dlopen("./libkernels.so", RTLD_LAZY);
 			if (!handle) {
 		        LOG(ERROR) << "Cannot open library: " << dlerror();
 				exit(1);

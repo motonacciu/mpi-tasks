@@ -5,3 +5,4 @@
 //////////////////////////////////////////////
 MESSAGE(TEST, int)
 MESSAGE(GROUP_CREATE, std::vector<int>)
+MESSAGE(TASK_CREATE, std::string, unsigned, unsigned)

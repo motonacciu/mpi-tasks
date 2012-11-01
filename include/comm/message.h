@@ -13,6 +13,35 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 
+namespace boost {
+namespace serialization {
+
+template<uint N>
+struct Serialize
+{
+    template<class Archive, typename... Args>
+    static void serialize(Archive& ar, std::tuple<Args...>& t, unsigned int version) {
+        ar & std::get<N-1>(t);
+        Serialize<N-1>::serialize(ar, t, version);
+    }
+};
+
+template<>
+struct Serialize<0>
+{
+    template<class Archive, typename... Args>
+    static void serialize(Archive& ar, std::tuple<Args...>& t, unsigned int version) {}
+};
+
+template<class Archive, typename... Args>
+void serialize(Archive & ar, std::tuple<Args...> & t, unsigned int version) {
+    Serialize<sizeof...(Args)>::serialize(ar, t, version);
+}
+
+} // end serialization namespace 
+} // end boost namespace 
+
+
 namespace mpits {
 namespace comm {
 
@@ -49,7 +78,7 @@ class Message {
 	
 public:
 	enum MessageType {
-	#define MESSAGE(MSG_ID, MSG_CONTENT_TYPE)	MSG_ID,
+	#define MESSAGE(MSG_ID, ...)	MSG_ID,
 	#include "comm/message.def"
 	#undef MESSAGE
 	};
@@ -120,7 +149,7 @@ public:
 	inline Bytes bytes() const { return *m_content; }
 	
 	template <class Content>
-	Content get_content_as() {
+	Content get_content_as() const {
 		content_impl<Content>& cc = dynamic_cast<content_impl<Content>&>(*m_pimpl);
 		return cc.content;
 	}

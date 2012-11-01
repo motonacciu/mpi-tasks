@@ -13,6 +13,8 @@ namespace comm {
 
 struct SendChannel {
 
+	SendChannel() {}
+
 	SendChannel(EventHandler& evt) 
 	{
 		evt.connect(

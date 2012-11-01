@@ -32,7 +32,7 @@ void Message::generate_content() {
 
 std::string Message::msg_id_to_str(MessageType const& msg_id) {
 	switch(msg_id) {
-	#define MESSAGE(MSG_ID, MSG_CONTENT) case MSG_ID: return #MSG_ID;
+	#define MESSAGE(MSG_ID, ...) case MSG_ID: return #MSG_ID;
 	#include "comm/message.def"
 	#undef MESSAGE
 	default:

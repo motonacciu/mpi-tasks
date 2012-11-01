@@ -83,7 +83,6 @@ namespace mpits {
 					);
 		}
 
-		LOG(INFO) << mypid;
 		MPI_Gather(&mypid, 1, MPI_INT, NULL, 0, MPI_INT, 0, node_comm);
 		return std::move( std::unique_ptr<Worker>( new Worker(node_comm) ) );
 	}

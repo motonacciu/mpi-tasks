@@ -6,6 +6,8 @@
 
 #include <ctime>
 
+#include "mpits.h"
+
 #include "utils/string.h"
 #include "utils/logging.h"
 
@@ -37,5 +39,7 @@ void kernel_1(MPI_Comm comm) {
 	if (rank==0) {
 		LOG(INFO) << mpits::utils::join(ret, "-");
 	}
+
+	// mpits::Task::TaskID id = mpits::spawn("kernel_1", 2, 2);
 
 }

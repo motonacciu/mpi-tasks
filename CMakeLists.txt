@@ -20,12 +20,12 @@ include_directories(${CMAKE_SOURCE_DIR}/include )
 
 file(GLOB_RECURSE sources src/*.cpp)
 
-add_library(mpits_lib SHARED ${sources})
+add_library(mpits SHARED ${sources})
 
 add_library(kernels SHARED kernels.cpp)
 
-add_executable(mpits main.cpp)
-target_link_libraries(mpits mpits_lib ${MPI_LIBRARIES} ${Boost_LIBRARIES})
+add_executable(main main.cpp)
+target_link_libraries(main mpits ${MPI_LIBRARIES} ${Boost_LIBRARIES})
 
 
 ## Enable testing with Gtest
@@ -60,7 +60,7 @@ foreach ( case_file ${test_cases})
 	
 	set ( case_name ${ut_prefix}${case_name} )
 	add_executable(${case_name} ${case_file})
-	target_link_libraries(${case_name} mpits_lib ${Threads} ${MPI_LIBRARIES} ${Boost_LIBRARIES})
+	target_link_libraries(${case_name} mpits ${Threads} ${MPI_LIBRARIES} ${Boost_LIBRARIES})
 	
 	add_unit_test(${case_name})
 

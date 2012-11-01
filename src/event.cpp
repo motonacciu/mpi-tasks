@@ -92,8 +92,8 @@ void EventHandler::process_event(Event const& evt) {
 	
 	if (fit == m_handlers.end()) { return ; }
 	
-	LOG(DEBUG) << "Serving event '" << Event::evtToStr(evt.event_id()) << "', " 
-			   << "(number of registered handlers: " << fit->second.size() << ")";
+	//LOG(DEBUG) << "Serving event '" << Event::evtToStr(evt.event_id()) << "', " 
+	//		   << "(number of registered handlers: " << fit->second.size() << ")";
 			 
 	std::unordered_set<HandleID> to_disconnect;
 	

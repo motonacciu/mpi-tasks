@@ -5,20 +5,60 @@
 #include <memory>
 #include <vector>
 
-#include "context.h"
-
 namespace mpits {
 
+struct Task {
 
-Role& get_role(std::unique_ptr<Role>&& role = std::unique_ptr<Role>());
+	typedef unsigned long TaskID;
+
+	const TaskID& taskID() const { return m_tid; }
+
+	Task(const TaskID& tid, const std::string& kernel, unsigned min, unsigned max) 
+		: m_tid(tid), m_kernel(kernel), m_min(min), m_max(max) { }
+
+	Task::TaskID tid() const { return m_tid; }
+
+	const std::string& kernel() const { return m_kernel; }
+
+	unsigned min() const { return m_min; }
+
+	unsigned max() const { return m_max; }
+
+private:
+
+	TaskID 			m_tid;
+	std::string 	m_kernel;
+	unsigned 		m_min;
+	unsigned 		m_max;
+};
 
 
-void init();
+struct RemoteTask: public Task {
 
 
-void make_group(const std::vector<int>& ranks);
+};
 
+//struct LocalTask: public Task {
+//	
+//	typedef std::vector<int> RankList;
+//
+//	LocalTask(const Task::TaskID& tid, const RankList& pids) :
+//		Task(tid), m_pids(pids) { }
+//
+//	const RankList& pids() const { return m_pids; }
+//
+//private:
+//
+//	RankList m_pids;
+//
+//};
 
-void finalize();
-		
 } // end namespace mpits 
+
+namespace std {
+
+	inline std::ostream& operator<<(std::ostream& out, const mpits::Task& cur) {
+		return out << "[TID:" << cur.tid() << "]";
+	}
+
+} // end std namespace 

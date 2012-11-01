@@ -1,6 +1,9 @@
 
 #include "worker.h"
 
+#include "comm/message.h"
+#include "comm/channel.h"
+
 #include "utils/logging.h"
 #include "utils/string.h"
 
@@ -64,6 +67,22 @@ void call_back(int sig) {
 
 namespace mpits {
 
+// Send the request to the Scheduler, wait for the TaskID and return 
+Task::TaskID Worker::spawn(const std::string& kernel, unsigned min, unsigned max) {
+
+	using namespace comm;
+
+	auto task_data = std::make_tuple(kernel, min, max);
+	//msg_content_traits<decltype(task_data)>::to_bytes()
+	SendChannel()( Message(Message::TASK_CREATE, 0, node_comm(), task_data) );
+	
+	Task::TaskID tid;
+	MPI_Recv(&tid, 1, MPI_UNSIGNED_LONG, 0, 0, node_comm(), MPI_STATUS_IGNORE);
+	
+	LOG(INFO) << "Task generated: " << tid;
+	return tid;
+}
+
 
 void Worker::do_work() {
 
@@ -87,6 +106,7 @@ void Worker::do_work() {
 			stop = true;
 			break;
 		}
+
 
 		case 1: 
 		{

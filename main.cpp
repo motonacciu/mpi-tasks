@@ -1,7 +1,7 @@
 
 #include <iostream>
 
-#include "task.h"
+#include "mpits.h"
 
 #include "utils/logging.h"
 #include "utils/string.h"
@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
 
 	LOG(INFO) << "MPI Task System";
 
-	mpits::make_group({2,4,6});
+	mpits::spawn("kernel_1", 2, 4);
 
 	sleep(5);
 

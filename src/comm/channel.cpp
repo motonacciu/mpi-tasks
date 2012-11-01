@@ -24,6 +24,7 @@ bool ReceiveChannel::operator()(const size_t& delay, const std::vector<MPI_Comm>
 
 		MPI_Status status;
 
+		// LOG(DEBUG) << "{@MR} Probing for message";
 		int flag=0, size=0;
 		MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, cur, &flag, &status);
 	
@@ -39,12 +40,12 @@ bool ReceiveChannel::operator()(const size_t& delay, const std::vector<MPI_Comm>
 
 			Message msg = [&] () -> Message {
 				switch(status.MPI_TAG) {
-				#define MESSAGE(MSG_ID, CONTENT_TYPE) \
+				#define MESSAGE(MSG_ID, ...) \
 				case Message::MSG_ID: \
 					return Message(Message::MSG_ID, \
 								   status.MPI_SOURCE, \
 								   cur, \
-								   msg_content_traits<CONTENT_TYPE>::from_bytes(buff) \
+								   msg_content_traits<std::tuple<__VA_ARGS__>>::from_bytes(buff) \
 						   );
 				#include "comm/message.def"
 				#undef MESSAGE

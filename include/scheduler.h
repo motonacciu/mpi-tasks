@@ -6,6 +6,8 @@
 #include "context.h"
 #include "event.h"
 
+#include "comm/channel.h"
+
 namespace mpits {
 
 struct Scheduler : public Role {
@@ -13,23 +15,17 @@ struct Scheduler : public Role {
 	typedef std::pair<int, int> 	PidPair;
 	typedef std::vector<PidPair> 	Pids;
 
-	Scheduler(const MPI_Comm& 	node_comm, 
+	Scheduler(const MPI_Comm& 	node_comm,
 			  const MPI_Comm& 	sched_comm,
 			  Pids&&	 		pids) 
 	: 
-		Role(Role::RT_SCHEDULER), 
-		m_node_comm(node_comm),
+		Role(Role::RT_SCHEDULER, node_comm),
+		m_tid(0),
 		m_sched_comm(sched_comm),
 		m_pids(std::move(pids)),
+		m_rchan(m_handler),
+		m_schan(m_handler),
 		m_thr(std::ref(m_handler)) { }
-
-	const MPI_Comm& node_comm() const { return m_node_comm; }
-
-	int node_rank() const {
-		int node_rank;
-		MPI_Comm_rank(m_node_comm, &node_rank);
-		return node_rank;
-	}
 
 	int sched_rank() const {
 		int sched_rank;
@@ -37,13 +33,27 @@ struct Scheduler : public Role {
 		return sched_rank;
 	}
 
+	size_t next_tid() { return ++m_tid; }
+
 	const Pids& pid_list() const { return m_pids; }
 
-	void do_work() { }
-	
+	void do_work();
+	 
 	EventQueue& cmd_queue() { return m_handler.queue(); }
 
+	void enqueue_task(const std::shared_ptr<Task>& task) {
+		m_task_queue.push_back( task );
+	}
+
+	std::shared_ptr<Task> next_task() {
+		auto t = m_task_queue.front();
+		m_task_queue.pop_front();
+		return t;
+	}
+
 	void join() { m_thr.join(); }
+
+	Task::TaskID spawn(const std::string& kernel, unsigned min, unsigned max);
 
 	~Scheduler() { }
 
@@ -51,12 +61,18 @@ struct Scheduler : public Role {
 	Scheduler(const Scheduler&) = delete;
 
 private:
-	MPI_Comm		m_node_comm;
+	size_t			m_tid;
+
 	MPI_Comm		m_sched_comm;
 	Pids			m_pids;
 
-	EventHandler 	m_handler;
+	EventHandler 			m_handler;
+	comm::ReceiveChannel 	m_rchan;
+	comm::SendChannel 		m_schan;
+
 	std::thread     m_thr;
+
+	std::deque<std::shared_ptr<Task>> m_task_queue;
 };
 
 } // end namespace mpits 

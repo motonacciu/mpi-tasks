@@ -37,10 +37,10 @@ class any {
 	std::unique_ptr<const container> m_ptr;
 
 public:
-	template <class T>
-	any(const T& value) : m_ptr( new container_impl<std::tuple<T>>(std::make_tuple(value)) ) 
-		{ } 
-
+//	template <class T>
+//	any(const T& value) : m_ptr( new container_impl<std::tuple<T>>(std::make_tuple(value)) ) 
+//		{ } 
+//
 	//template <class T>
 	//any(T&& value) : m_ptr( new container_impl<std::tuple<T>>(std::move(value)) ) { } 
 

@@ -1,5 +1,7 @@
 #include "scheduler.h"
 
+#include "utils/string.h"
+
 namespace mpits {
 
 namespace {
@@ -87,7 +89,17 @@ namespace {
 		LOG(INFO) << "Spawning task: " << *t;
 
 		unsigned min = t->min();
-		make_group(sched, {1,2});
+		
+		LOG(INFO) << min;
+
+		std::vector<int> ranks(min);
+		ranks[0] = 1;
+		for (int i=1; i<min; ++i)
+			ranks[i] = ranks[i-1]+1;
+
+		LOG(INFO) << utils::join(ranks);
+
+		make_group(sched, ranks);
 
 		MPI_Send(const_cast<Task::TaskID*>(&t->tid()), 1, MPI_UNSIGNED_LONG, 1, 0, sched.node_comm());
 

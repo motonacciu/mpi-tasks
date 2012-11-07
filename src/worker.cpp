@@ -194,10 +194,11 @@ void Worker::do_work() {
 			MPI_Comm_free(&comm);
 			delete[] kernel_name;
 
-			LOG(INFO) << "Kernel completed!";
-			// Send the completition message to the scheduler 
-			comm::SendChannel()( comm::Message(comm::Message::TASK_COMPLETED, 0, node_comm(), std::make_tuple(tid)) );
-
+			if (new_rank==0) {
+				LOG(INFO) << "Kernel completed!";
+				// Send the completition message to the scheduler 
+				comm::SendChannel()( comm::Message(comm::Message::TASK_COMPLETED, 0, node_comm(), std::make_tuple(tid)) );
+			}
 			break;
 		}
 

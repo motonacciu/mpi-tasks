@@ -15,9 +15,10 @@ int main(int argc, char* argv[]) {
 
 	LOG(INFO) << "MPI Task System";
 
-	auto tid = mpits::spawn("kernel_1", 2, 4);
-
-	mpits::wait_for(tid);
+	for (int i=0; i<100; i++) {
+		auto tid = mpits::spawn("kernel_1", i%7<=1?2:i%7, 7);
+		mpits::wait_for(tid);
+	}
 
 	mpits::finalize();
 }

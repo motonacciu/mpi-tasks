@@ -122,9 +122,9 @@ struct EventHandler {
 	 			 	 const std::function<bool (const T&...)>& 	handle, 
 				 	 const std::function<bool (const T&...)>& 	filter ) 
 	{
-#ifdef USE_SYNCH
+//#ifdef USE_SYNCH
 		std::lock_guard<std::mutex> lock(m_mutex); 
-#endif
+//#endif
 		LOG(DEBUG) << "{@EH} Connecting event lister for '" << Event::evtToStr(evt);
 	
 		// Search for the handle ID 
@@ -157,9 +157,9 @@ private:
 	void process_event(Event const& evt);
 	void disconnect_nts(HandleID const& id);
 
-#ifdef USE_SYNCH
+//#ifdef USE_SYNCH
 	std::mutex 		m_mutex;
-#endif
+//#endif
 
 	EventQueue 		m_event_queue;
 	HandleMap 		m_handlers;

@@ -55,7 +55,12 @@ namespace {
 				MPI_Send(&tid, 1, MPI_UNSIGNED_LONG, msg.endpoint(), 0, msg.comm()); 
 				break;
 			}
+
 		case Message::TASK_COMPLETED:
+			/**
+			 * When we receive a message from the master worker saying that the task is completed 
+			 * we all generate an internal event
+			 */
 			{	
 				auto tid = msg.get_content_as<std::tuple<Task::TaskID>>();
 				sched.cmd_queue().push( Event(Event::TASK_COMPLETED, utils::any(std::move(std::get<0>(tid)))) );
@@ -86,23 +91,21 @@ namespace {
 	void task_spawn(Scheduler& sched) {
 		
 		std::shared_ptr<Task> t = sched.next_task();
-		LOG(INFO) << "Spawning task: " << *t;
+		LOG(DEBUG) << "Spawning task: " << *t;
 
 		unsigned min = t->min();
 		
-		LOG(INFO) << min;
-
 		std::vector<int> ranks(min);
 		ranks[0] = 1;
 		for (int i=1; i<min; ++i)
 			ranks[i] = ranks[i-1]+1;
 
-		LOG(INFO) << utils::join(ranks);
-
 		make_group(sched, ranks);
 
+		// Send the TID 
 		MPI_Send(const_cast<Task::TaskID*>(&t->tid()), 1, MPI_UNSIGNED_LONG, 1, 0, sched.node_comm());
 
+		// Send the name of the function to be invoked 
 		MPI_Send(const_cast<char*>(t->kernel().c_str()), t->kernel().length()+1, MPI_CHAR,
 				 1, 0, sched.node_comm());
 	}

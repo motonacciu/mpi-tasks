@@ -37,7 +37,7 @@ void kernel_1(MPI_Comm comm) {
 	MPI_Reduce(&v.front(), &ret.front(), comm_size, MPI_INT, MPI_SUM, 0, comm);
 
 	if (rank==0) {
-		LOG(INFO) << mpits::utils::join(ret, "-");
+		std::cout << mpits::utils::join(ret, "-");
 	}
 
 	// mpits::Task::TaskID id = mpits::spawn("kernel_1", 2, 2);

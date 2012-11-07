@@ -53,6 +53,13 @@ namespace {
 				MPI_Send(&tid, 1, MPI_UNSIGNED_LONG, msg.endpoint(), 0, msg.comm()); 
 				break;
 			}
+		case Message::TASK_COMPLETED:
+			{	
+				auto tid = msg.get_content_as<std::tuple<Task::TaskID>>();
+				sched.cmd_queue().push( Event(Event::TASK_COMPLETED, utils::any(std::move(std::get<0>(tid)))) );
+				break;
+			}
+
 		default:
 			assert(false);
 		}
@@ -81,6 +88,8 @@ namespace {
 
 		unsigned min = t->min();
 		make_group(sched, {1,2});
+
+		MPI_Send(const_cast<Task::TaskID*>(&t->tid()), 1, MPI_UNSIGNED_LONG, 1, 0, sched.node_comm());
 
 		MPI_Send(const_cast<char*>(t->kernel().c_str()), t->kernel().length()+1, MPI_CHAR,
 				 1, 0, sched.node_comm());
@@ -118,6 +127,30 @@ void Scheduler::do_work() {
 
 Task::TaskID Scheduler::spawn(const std::string& kernel, unsigned min, unsigned max) {
 	return create_task(*this, kernel, min, max);
+}
+
+void Scheduler::wait_for(const Task::TaskID& tid) {
+
+	std::mutex m;
+	std::condition_variable cond_var;
+
+	m_handler.connect(
+			Event::TASK_COMPLETED, 
+			std::function<bool (const Task::TaskID&)>(
+				[&](const Task::TaskID& cur) { 
+					cond_var.notify_one();
+					return true;
+				}
+			),
+			// Filter the particular event 
+			std::function<bool (const Task::TaskID&)>(
+				[&](const Task::TaskID& cur) { return cur == tid; }
+			)
+		);
+	
+	std::unique_lock<std::mutex> lock(m);
+	cond_var.wait(lock);
+
 }
 
 } // end mpits namespace 

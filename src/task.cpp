@@ -44,6 +44,13 @@ Task::TaskID spawn(const std::string& kernel, unsigned min, unsigned max) {
 
 }
 
+void wait_for(const Task::TaskID& tid) {
+
+	auto& r = get_role();
+	r.wait_for(tid);
+
+}
+
 void finalize() {
 		
 	// find pids 

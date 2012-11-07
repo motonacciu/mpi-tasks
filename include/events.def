@@ -6,4 +6,5 @@ EVENT(SEND_MSG, 		comm::Message)
 EVENT(MSG_RECVD, 		comm::Message)
 
 EVENT(TASK_CREATED,		unsigned long)
+EVENT(TASK_COMPLETED,	unsigned long)
 

@@ -130,9 +130,15 @@ void Worker::do_work() {
 			int new_rank;
 			MPI_Comm_rank(comm, &new_rank);
 
+			unsigned long tid;
+
 			if (new_rank==0) {
 				LOG(INFO) << "GROUP FORMED!";
 
+				// retrieve tid
+				MPI_Recv(&tid, 1, MPI_UNSIGNED_LONG, 0, 0, node_comm(), MPI_STATUS_IGNORE);
+
+				MPI_Bcast(&tid, 1, MPI_UNSIGNED_LONG, 0, comm);
 				// retrieve work 
 				MPI_Status status;
 				MPI_Probe(0, MPI_ANY_TAG, node_comm(), &status); 
@@ -146,12 +152,17 @@ void Worker::do_work() {
 				MPI_Bcast(&size, 1, MPI_INT, 0, comm);
 				MPI_Bcast(kernel_name, size, MPI_CHAR, 0, comm);
 			} else {
+				// remaining processes in the group retirive:
+				//  	tid
+				MPI_Bcast(&tid, 1, MPI_UNSIGNED_LONG, 0, comm);
+				//		kernel_name_size
 				MPI_Bcast(&size, 1, MPI_INT, 0, comm);
 				kernel_name = new char[size];
+				//		kernel_name 
 				MPI_Bcast(kernel_name, size, MPI_CHAR, 0, comm);
 			}
 
-			LOG(INFO) << "Recvd kernel '" << kernel_name << "'";
+			LOG(INFO) << "TID: " << tid << " - recvd kernel '" << kernel_name << "'";
 			// Do-work TODO
 			//
 			
@@ -179,8 +190,13 @@ void Worker::do_work() {
 			LOG(INFO) << "Calling '" << kernel_name << "'...";
 			kernel(comm);
 
+			// Kernel completed
 			MPI_Comm_free(&comm);
 			delete[] kernel_name;
+
+			LOG(INFO) << "Kernel completed!";
+			// Send the completition message to the scheduler 
+			comm::SendChannel()( comm::Message(comm::Message::TASK_COMPLETED, 0, node_comm(), std::make_tuple(tid)) );
 
 			break;
 		}

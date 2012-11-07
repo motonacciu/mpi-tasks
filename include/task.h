@@ -16,7 +16,7 @@ struct Task {
 	Task(const TaskID& tid, const std::string& kernel, unsigned min, unsigned max) 
 		: m_tid(tid), m_kernel(kernel), m_min(min), m_max(max) { }
 
-	Task::TaskID tid() const { return m_tid; }
+	const Task::TaskID& tid() const { return m_tid; }
 
 	const std::string& kernel() const { return m_kernel; }
 

@@ -3,6 +3,7 @@
 //********************************************
 // MESSAGE ( MESSAGE_ID, CONTENT TYPE )
 //////////////////////////////////////////////
-MESSAGE(TEST, int)
-MESSAGE(GROUP_CREATE, std::vector<int>)
-MESSAGE(TASK_CREATE, std::string, unsigned, unsigned)
+MESSAGE(TEST, 			int)
+MESSAGE(GROUP_CREATE, 	std::vector<int>)
+MESSAGE(TASK_CREATE, 	std::string, unsigned, unsigned)
+MESSAGE(TASK_COMPLETED, unsigned long)

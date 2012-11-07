@@ -32,6 +32,8 @@ struct Role {
 
 	virtual Task::TaskID spawn(const std::string& kernel, unsigned min, unsigned max) = 0;
 
+	virtual void wait_for(const Task::TaskID& tid) = 0;
+
 	virtual ~Role() { }
 
 private:

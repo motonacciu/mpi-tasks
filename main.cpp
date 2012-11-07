@@ -15,9 +15,9 @@ int main(int argc, char* argv[]) {
 
 	LOG(INFO) << "MPI Task System";
 
-	mpits::spawn("kernel_1", 2, 4);
+	auto tid = mpits::spawn("kernel_1", 2, 4);
 
-	sleep(5);
+	mpits::wait_for(tid);
 
 	mpits::finalize();
 }

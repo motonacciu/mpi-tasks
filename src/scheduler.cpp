@@ -74,9 +74,10 @@ namespace {
 			 */
 			{
 				auto desc = msg.get_content_as<std::tuple<Task::TaskID, std::vector<Task::TaskID>>>();
-
 				LOG(INFO) << "Task '" << std::get<0>(desc) << "' waiting for tasks: " << utils::join(std::get<1>(desc));
 
+
+				break;
 			}
 
 		default:
@@ -86,6 +87,15 @@ namespace {
 		return false;
 	}
 
+	// Resume group
+	void wakeup_group(const Scheduler& sched, const std::vector<int>& ranks, const Task::TaskID& tid) {
+			
+		for(int idx : ranks) {
+			kill(sched.pid_list()[idx-1].second, SIGCONT);
+			MPI_Send(const_cast<Task::TaskID*>(&tid), 1, MPI_UNSIGNED_LONG, 
+					 sched.pid_list()[idx-1].first, 3, sched.node_comm());
+		}
+	}
 
 	void make_group(const Scheduler& sched, const std::vector<int>& ranks) {
 			

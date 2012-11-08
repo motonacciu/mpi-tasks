@@ -17,10 +17,13 @@ int main(int argc, char* argv[]) {
 
 	LOG(INFO) << "MPI Task System";
 
-	for (int i=0; i<n; ++i) {
-		auto tid = mpits::spawn("kernel_1", i%7<=1?2:i%7, 7);
-		mpits::wait_for(tid);
-	}
+	//for (int i=0; i<n; ++i) {
+	auto tid1 = mpits::spawn("kernel_1", 2, 2);
+	//mpits::wait_for(tid);
+	//}
+	auto tid2 = mpits::spawn("kernel_1", 3, 3);
+
+	mpits::wait_for(tid1);
 
 	mpits::finalize();
 }

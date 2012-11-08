@@ -2,12 +2,14 @@ cmake_minimum_required(VERSION 2.8)
 
 project(mpits)
 
-add_definitions(-std=c++0x -g)
+add_definitions(-std=c++11)
 
 find_package(Boost REQUIRED serialization context)
 find_package(MPI REQUIRED)
 find_package(GTest REQUIRED)
 find_package(Threads REQUIRED)
+
+SET(CMAKE_BUILD_TYPE "Release")
 
 set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS})
 

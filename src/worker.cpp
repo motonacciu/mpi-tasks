@@ -41,6 +41,8 @@ namespace mpits {
 
 		const Task::TaskID& tid() const { return m_tid; }
 
+		ctx::fcontext_t* ctx() const { return m_ctx_ptr; }
+
 		~TaskDesc() {
 			MPI_Comm_free(&m_comm);
 			m_alloc.deallocate(m_stack_ptr, ctx::guarded_stack_allocator::minimum_stacksize());
@@ -196,14 +198,13 @@ namespace mpits {
 
 			switch (status.MPI_TAG) {
 
-			case 0:
+			case 0: // Exit 
 			{
 				stop = true;
 				break;
 			}
 
-
-			case 1: 
+			case 1:  // Spawn task 
 			{
 				int size;
 				// we expect to receive a list of integers representing 
@@ -289,6 +290,18 @@ namespace mpits {
 				break;
 			}
 
+			case 3:	// Resume Worker 
+			{
+				Task::TaskID tid;
+				MPI_Recv(&tid, 1, MPI_UNSIGNED_LONG, 0, 3, node_comm(), MPI_STATUS_IGNORE);
+				
+				auto fit = active_tasks.find( tid );
+				assert(fit != active_tasks.end() && "Scheduler required to resume completed task");
+
+				curr_ptr = fit->second->ctx();
+				ctx::jump_fcontext( &fcw, curr_ptr, 0);
+				break;
+			}
 
 			default:
 				assert(false);
@@ -301,6 +314,36 @@ namespace mpits {
 		dlclose(handle);
 		MPI_Finalize();
 
+	}
+
+	void Worker::wait_for(const Task::TaskID& tid) {
+
+		assert(curr_active_task != active_tasks.end() && "curr task pointer is not valid!");
+
+		TaskDesc& desc = *curr_active_task->second;
+
+		/**
+		 * If the task id is the current one then we don't need to wait
+		 */
+		if (tid == desc.tid()) { return; }
+
+		int rank;
+		MPI_Comm_rank(desc.comm(), &rank);
+
+		if (rank==0) {
+			// Let the scheduler know that this task is now suspended waiting for tid 
+			comm::SendChannel()( comm::Message(comm::Message::TASK_WAIT, 0, node_comm(), 
+								 std::make_tuple(desc.tid(), std::vector<unsigned long>({tid}))) 
+					);
+		}
+
+		auto* ptr = curr_ptr;
+		curr_ptr = &fcw;
+		
+		// erase task from the map 
+		curr_active_task = active_tasks.end();
+
+		ctx::jump_fcontext(ptr, &fcw, 0);
 	}
 
 } // end namespace mpits 

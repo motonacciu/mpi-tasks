@@ -42,6 +42,9 @@ void kernel_1(intptr_t comm_ptr) {
 		std::cout << mpits::utils::join(ret, "-") << std::endl;
 	}
 
+	
+	mpits::wait_for(2);
+
 	// mpits::Task::TaskID id = mpits::spawn("kernel_1", 2, 2);
 
 	mpits::finalize();

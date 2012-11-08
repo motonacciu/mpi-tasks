@@ -180,4 +180,19 @@ void Scheduler::wait_for(const Task::TaskID& tid) {
 
 }
 
+void Scheduler::finalize() { 
+
+	for(auto& idxs : pid_list()) {
+		kill(idxs.second, SIGCONT);
+		MPI_Send(NULL, 0, MPI_BYTE, idxs.first, 0, node_comm());
+	}
+
+	cmd_queue().push( Event(Event::SHUTDOWN,true)  );
+
+	join();
+
+	MPI_Finalize();
+}
+
+
 } // end mpits namespace 

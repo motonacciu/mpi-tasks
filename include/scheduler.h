@@ -58,6 +58,8 @@ struct Scheduler : public Role {
 
 	void wait_for(const Task::TaskID& tid);
 
+	void finalize();
+
 	virtual ~Scheduler() { }
 
 	Scheduler& operator=(const Scheduler&) = delete;

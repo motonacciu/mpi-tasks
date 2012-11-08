@@ -33,7 +33,7 @@ struct Role {
 
 	virtual void wait_for(const Task::TaskID& tid) = 0;
 
-	virtual void exit() { }
+	virtual void finalize() = 0;
 
 	virtual ~Role() { }
 

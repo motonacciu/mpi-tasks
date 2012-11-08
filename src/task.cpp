@@ -49,24 +49,10 @@ void wait_for(const Task::TaskID& tid) {
 	auto& r = get_role();  r.wait_for(tid);
 }
 
-void exit() {
-	auto& r = get_role();  r.exit();
-}
-
 void finalize() {
 		
-	// find pids 
-	auto& r = static_cast<Scheduler&>(get_role());
-	
-	for(auto& idxs : r.pid_list()) {
-		kill(idxs.second, SIGCONT);
-		MPI_Send(NULL, 0, MPI_BYTE, idxs.first, 0, r.node_comm());
-	}
-
-	r.cmd_queue().push( Event(Event::SHUTDOWN,true)  );
-	r.join();
-
-	MPI_Finalize();
+	auto& r = get_role();
+	r.finalize();
 	
 }
 

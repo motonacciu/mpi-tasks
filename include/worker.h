@@ -21,10 +21,12 @@ struct Worker : public Role {
 
 	void wait_for(const Task::TaskID& tid) {} 
 
-	void exit();
+	void finalize();
 
 private:
-	pid_t 		m_pid;
+
+	pid_t 	m_pid;
+
 };
 
 } // end namespace mpits 

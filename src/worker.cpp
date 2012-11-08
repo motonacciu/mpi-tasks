@@ -13,30 +13,56 @@
 
 #include <boost/context/all.hpp>
 
-namespace {
+namespace ctx = boost::context;
 
-	using namespace mpits; 
 
-	struct JobDescriptor {
+namespace mpits {
 
-		Task::TaskID		m_tid;
-		MPI_Comm 			m_comm; 
+	struct TaskDesc {
 
-		JobDescriptor(const JobDescriptor&) = delete;
-		JobDescriptor& operator=(const JobDescriptor&) = delete;
+		Task::TaskID					m_tid;
+		MPI_Comm 						m_comm; 
+		ctx::fcontext_t* 				m_ctx_ptr;
+		void*							m_stack_ptr;
+		ctx::guarded_stack_allocator& 	m_alloc;
 
-		JobDescriptor(const Task::TaskID& tid, const MPI_Comm& comm) 
-			: m_tid(tid), m_comm(comm) { }
+		TaskDesc(const TaskDesc&) = delete;
+		TaskDesc& operator=(const TaskDesc&) = delete;
+
+		TaskDesc(const Task::TaskID& 			tid, 
+				 const MPI_Comm& 				comm, 
+				 ctx::fcontext_t* 				ctx_ptr, 
+				 void*							stack_ptr,
+				 ctx::guarded_stack_allocator&  alloc) : 
+			m_tid(tid), m_comm(comm), m_ctx_ptr(ctx_ptr), 
+			m_stack_ptr(stack_ptr), m_alloc(alloc) { }
 
 		const MPI_Comm& comm() const { return m_comm; }
 
 		const Task::TaskID& tid() const { return m_tid; }
 
-		~JobDescriptor() {
+		~TaskDesc() {
 			MPI_Comm_free(&m_comm);
+			m_alloc.deallocate(m_stack_ptr, ctx::guarded_stack_allocator::minimum_stacksize());
 		}
 	
 	};
+
+	typedef std::unique_ptr<TaskDesc> TaskDescPtr;
+
+} // end mpits namespace 
+
+
+typedef std::map<mpits::Task::TaskID, mpits::TaskDescPtr> ActiveTaskList;
+
+ActiveTaskList 				active_tasks;
+ActiveTaskList::iterator 	curr_active_task = active_tasks.end();
+
+std::vector<mpits::TaskDescPtr> ctx_clean;
+
+namespace {
+
+	using namespace mpits; 
 
 	/**
 	 * taken the idea from:
@@ -88,11 +114,11 @@ namespace {
 
 } // end anonymous namespace 
 
-namespace ctx = boost::context;
 
 namespace mpits {
 
-	ctx::fcontext_t fcw, *fc1;
+	ctx::fcontext_t fcw;
+	ctx::fcontext_t* curr_ptr=nullptr;
 
 	// Send the request to the Scheduler, wait for the TaskID and return 
 	Task::TaskID Worker::spawn(const std::string& kernel, unsigned min, unsigned max) {
@@ -110,8 +136,36 @@ namespace mpits {
 		return tid;
 	}
 
-	void Worker::exit() {
-		ctx::jump_fcontext(fc1, &fcw, 0);
+	void Worker::finalize() {
+
+		assert(curr_active_task != active_tasks.end() && "curr task pointer is not valid!");
+
+		TaskDesc& desc = *curr_active_task->second;
+
+		// Makes sure that all the workers have reached the end of the kernel 
+		MPI_Barrier(desc.comm());
+
+		int rank;
+		MPI_Comm_rank(desc.comm(), &rank);
+
+		// kernel completition
+		if (rank==0) {
+			LOG(DEBUG) << "Kernel completed!";
+			// Send the completition message to the scheduler 
+			comm::SendChannel()( comm::Message(comm::Message::TASK_COMPLETED, 0, node_comm(), std::make_tuple(desc.tid())) );
+		}
+
+		assert(curr_ptr && "Curr context pointer is invalid, how did you manage to jump here?");
+		auto* ptr = curr_ptr;
+		curr_ptr = &fcw;
+		
+		// erase task from the map 
+		ctx_clean.emplace_back( std::move(curr_active_task->second) );
+
+		active_tasks.erase(curr_active_task);
+		curr_active_task = active_tasks.end();
+
+		ctx::jump_fcontext(ptr, &fcw, 0);
 	}
 
 	void Worker::do_work() {
@@ -121,10 +175,8 @@ namespace mpits {
 		
 		// Initialize the context 
 		ctx::guarded_stack_allocator alloc;
-        std::size_t size = ctx::guarded_stack_allocator::default_stacksize();
-        void* sp1 = alloc.allocate(size);
-
-
+        std::size_t size = ctx::guarded_stack_allocator::minimum_stacksize();
+        
 		bool stop=false;
 
 		LOG(DEBUG) << "Opening kernel.so...";
@@ -135,7 +187,7 @@ namespace mpits {
 		}
 
 		while (!stop) {
-			LOG(INFO) << "Sleep";
+			LOG(DEBUG) << "Sleep";
 
 			pause();
 			
@@ -206,7 +258,7 @@ namespace mpits {
 				}
 
 				LOG(DEBUG) << "TID: " << tid << " - recvd kernel '" << kernel_name << "'";
-				
+
 				typedef void (*kernel_t)(intptr_t);
 
 				// reset errors
@@ -222,22 +274,18 @@ namespace mpits {
 				// use it to do the calculation
 				LOG(DEBUG) << "Calling '" << kernel_name << "'...";
 				delete[] kernel_name;
+			
+				auto* stack = alloc.allocate(size);
+				auto* fc = ctx::make_fcontext( stack, size, kernel );
+				
+				curr_active_task = active_tasks.insert( 
+					std::make_pair(
+						tid,  
+						std::unique_ptr<TaskDesc>( new TaskDesc(tid, comm, fc, stack, alloc) )
+					)).first;
 
-				fc1 = ctx::make_fcontext( sp1, size, kernel );
-				ctx::jump_fcontext( &fcw, fc1, (intptr_t)&comm, false);
-//				kernel(comm);
-
-				// Makes sure that all the workers have reached the end of the kernel 
-				MPI_Barrier(comm);
-
-				// Kernel completed
-				MPI_Comm_free(&comm);
-
-				if (new_rank==0) {
-					LOG(DEBUG) << "Kernel completed!";
-					// Send the completition message to the scheduler 
-					comm::SendChannel()( comm::Message(comm::Message::TASK_COMPLETED, 0, node_comm(), std::make_tuple(tid)) );
-				}
+				curr_ptr = fc;
+				ctx::jump_fcontext( &fcw, curr_ptr, (intptr_t)&comm);
 				break;
 			}
 
@@ -246,6 +294,7 @@ namespace mpits {
 				assert(false);
 			}
 
+			ctx_clean.clear();
 		}
 
 		LOG(INFO) << "\{W@} Worker Exiting!";

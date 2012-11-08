@@ -12,11 +12,14 @@
 #include "utils/logging.h"
 
 extern "C" { 
-	void kernel_1(MPI_Comm);
+	void kernel_1(intptr_t);
 }
 
-void kernel_1(MPI_Comm comm) {
+void kernel_1(intptr_t comm_ptr) {
 
+	std::cout << "ENTER" << std::endl; 
+
+	MPI_Comm comm = *(MPI_Comm*)comm_ptr;
 	int comm_size, rank;
 	MPI_Comm_size(comm, &comm_size);
 	MPI_Comm_rank(comm, &rank);
@@ -27,7 +30,7 @@ void kernel_1(MPI_Comm comm) {
 	std::vector<int> v(comm_size);
 
 	MPI_Allgather(&r, 1, MPI_INT, &v.front(), 1, MPI_INT, comm);
-	LOG(INFO) << mpits::utils::join(v, "-");
+	std::cout << mpits::utils::join(v, "-") << std::endl;
 
 	for(auto& e : v) {
 		e += r;
@@ -37,9 +40,10 @@ void kernel_1(MPI_Comm comm) {
 	MPI_Reduce(&v.front(), &ret.front(), comm_size, MPI_INT, MPI_SUM, 0, comm);
 
 	if (rank==0) {
-		std::cout << mpits::utils::join(ret, "-");
+		std::cout << mpits::utils::join(ret, "-") << std::endl;
 	}
 
 	// mpits::Task::TaskID id = mpits::spawn("kernel_1", 2, 2);
 
+	mpits::exit();
 }

@@ -67,6 +67,18 @@ namespace {
 				break;
 			}
 
+		case Message::TASK_WAIT:
+			/** 
+			 * A worker group is waiting for another task, the worker is paused waiting to be wake
+			 * up, therefore we register an event handler to wake up the worker upon completition
+			 */
+			{
+				auto desc = msg.get_content_as<std::tuple<Task::TaskID, std::vector<Task::TaskID>>>();
+
+				LOG(INFO) << "Task '" << std::get<0>(desc) << "' waiting for tasks: " << utils::join(std::get<1>(desc));
+
+			}
+
 		default:
 			assert(false);
 		}

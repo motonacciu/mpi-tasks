@@ -9,7 +9,35 @@
 
 #include <dlfcn.h>
 
+#include <thread>
+
+#include <boost/context/all.hpp>
+
 namespace {
+
+	using namespace mpits; 
+
+	struct JobDescriptor {
+
+		Task::TaskID		m_tid;
+		MPI_Comm 			m_comm; 
+
+		JobDescriptor(const JobDescriptor&) = delete;
+		JobDescriptor& operator=(const JobDescriptor&) = delete;
+
+		JobDescriptor(const Task::TaskID& tid, const MPI_Comm& comm) 
+			: m_tid(tid), m_comm(comm) { }
+
+		const MPI_Comm& comm() const { return m_comm; }
+
+		const Task::TaskID& tid() const { return m_tid; }
+
+		~JobDescriptor() {
+			MPI_Comm_free(&m_comm);
+		}
+	
+	};
+
 	/**
 	 * taken the idea from:
 	 *  	https://svn.mcs.anl.gov/repos/mpi/mpich2/trunk/test/mpi/spawn/pgroup_intercomm_test.c
@@ -60,7 +88,11 @@ namespace {
 
 } // end anonymous namespace 
 
+namespace ctx = boost::context;
+
 namespace mpits {
+
+	ctx::fcontext_t fcw, *fc1;
 
 	// Send the request to the Scheduler, wait for the TaskID and return 
 	Task::TaskID Worker::spawn(const std::string& kernel, unsigned min, unsigned max) {
@@ -68,7 +100,6 @@ namespace mpits {
 		using namespace comm;
 
 		auto task_data = std::make_tuple(kernel, min, max);
-		//msg_content_traits<decltype(task_data)>::to_bytes()
 		SendChannel()( Message(Message::TASK_CREATE, 0, node_comm(), task_data) );
 		
 		Task::TaskID tid;
@@ -79,12 +110,29 @@ namespace mpits {
 		return tid;
 	}
 
+	void Worker::exit() {
+		ctx::jump_fcontext(fc1, &fcw, 0);
+	}
+
 	void Worker::do_work() {
 
 		signal(SIGCONT, call_back);
 		LOG(INFO) << "Starting worker";
+		
+		// Initialize the context 
+		ctx::guarded_stack_allocator alloc;
+        std::size_t size = ctx::guarded_stack_allocator::default_stacksize();
+        void* sp1 = alloc.allocate(size);
+
 
 		bool stop=false;
+
+		LOG(DEBUG) << "Opening kernel.so...";
+		void* handle = dlopen("./libkernels.so", RTLD_NOW);
+		if (!handle) {
+			LOG(ERROR) << "Cannot open library: " << dlerror();
+			::exit(1);
+		}
 
 		while (!stop) {
 			LOG(INFO) << "Sleep";
@@ -147,7 +195,7 @@ namespace mpits {
 					MPI_Bcast(&size, 1, MPI_INT, 0, comm);
 					MPI_Bcast(kernel_name, size, MPI_CHAR, 0, comm);
 				} else {
-					// remaining processes in the group retirive:
+					// remaining processes in the group retirive:guarded_stack_allocator
 					//  	tid
 					MPI_Bcast(&tid, 1, MPI_UNSIGNED_LONG, 0, comm);
 					//		kernel_name_size
@@ -159,14 +207,7 @@ namespace mpits {
 
 				LOG(DEBUG) << "TID: " << tid << " - recvd kernel '" << kernel_name << "'";
 				
-				LOG(DEBUG) << "Opening kernel.so...";
-				void* handle = dlopen("./libkernels.so", RTLD_LAZY);
-				if (!handle) {
-					LOG(ERROR) << "Cannot open library: " << dlerror();
-					exit(1);
-				}
-
-				typedef void (*kernel_t)(MPI_Comm);
+				typedef void (*kernel_t)(intptr_t);
 
 				// reset errors
 				dlerror();
@@ -175,20 +216,22 @@ namespace mpits {
 				const char *dlsym_error = dlerror();
 				if (dlsym_error) {
 					LOG(ERROR) << "Cannot load symbol '" << kernel_name << "': " << dlsym_error;
-
 					dlclose(handle);
 				}
 		
 				// use it to do the calculation
 				LOG(DEBUG) << "Calling '" << kernel_name << "'...";
-				kernel(comm);
+				delete[] kernel_name;
+
+				fc1 = ctx::make_fcontext( sp1, size, kernel );
+				ctx::jump_fcontext( &fcw, fc1, (intptr_t)&comm, false);
+//				kernel(comm);
 
 				// Makes sure that all the workers have reached the end of the kernel 
 				MPI_Barrier(comm);
 
 				// Kernel completed
 				MPI_Comm_free(&comm);
-				delete[] kernel_name;
 
 				if (new_rank==0) {
 					LOG(DEBUG) << "Kernel completed!";
@@ -206,7 +249,7 @@ namespace mpits {
 		}
 
 		LOG(INFO) << "\{W@} Worker Exiting!";
-
+		dlclose(handle);
 		MPI_Finalize();
 
 	}

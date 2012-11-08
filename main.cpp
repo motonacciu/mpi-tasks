@@ -11,7 +11,7 @@ using namespace mpits::utils;
 
 int main(int argc, char* argv[]) {
 
-	mpits::init();
+	mpits::init(std::cout, DEBUG);
 
 	LOG(INFO) << "MPI Task System";
 

@@ -1,4 +1,5 @@
 
+#include "mpits.h"
 #include "task.h"
 
 #include "event.h"
@@ -17,12 +18,12 @@ Role& get_role(std::unique_ptr<Role>&& role=std::unique_ptr<Role>()) {
 	return *thisRole;
 }
 
-void init() { 
+void init(std::ostream& log_stream, const Level& level) { 
 
 	MPI_Init(NULL, NULL);
 	
 	/* Initialize the logger */
-	Logger::get(std::cout, DEBUG);
+	Logger::get(log_stream, level);
 
 	int nprocs, rank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -32,7 +33,7 @@ void init() {
 	role.do_work();
 	
 	if (role.type() == Role::RT_WORKER) {
-		exit(0);
+		::exit(0);
 	}
 }
 
@@ -45,10 +46,11 @@ Task::TaskID spawn(const std::string& kernel, unsigned min, unsigned max) {
 }
 
 void wait_for(const Task::TaskID& tid) {
+	auto& r = get_role();  r.wait_for(tid);
+}
 
-	auto& r = get_role();
-	r.wait_for(tid);
-
+void exit() {
+	auto& r = get_role();  r.exit();
 }
 
 void finalize() {

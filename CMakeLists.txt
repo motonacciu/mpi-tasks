@@ -4,7 +4,7 @@ project(mpits)
 
 add_definitions(-std=c++0x -g)
 
-find_package(Boost REQUIRED serialization)
+find_package(Boost REQUIRED serialization context)
 find_package(MPI REQUIRED)
 find_package(GTest REQUIRED)
 find_package(Threads REQUIRED)

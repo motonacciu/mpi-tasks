@@ -21,6 +21,8 @@ struct Worker : public Role {
 
 	void wait_for(const Task::TaskID& tid) {} 
 
+	void exit();
+
 private:
 	pid_t 		m_pid;
 };

@@ -46,6 +46,7 @@ struct Scheduler : public Role {
 	}
 
 	std::shared_ptr<Task> next_task() {
+		assert(!m_task_queue.empty());
 		auto t = m_task_queue.front();
 		m_task_queue.pop_front();
 		return t;
@@ -57,7 +58,7 @@ struct Scheduler : public Role {
 
 	void wait_for(const Task::TaskID& tid);
 
-	~Scheduler() { }
+	virtual ~Scheduler() { }
 
 	Scheduler& operator=(const Scheduler&) = delete;
 	Scheduler(const Scheduler&) = delete;

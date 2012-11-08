@@ -27,12 +27,13 @@ struct Role {
 
 	int node_size() const { return m_node_size; }
 
-
 	virtual void do_work() = 0;
 
 	virtual Task::TaskID spawn(const std::string& kernel, unsigned min, unsigned max) = 0;
 
 	virtual void wait_for(const Task::TaskID& tid) = 0;
+
+	virtual void exit() { }
 
 	virtual ~Role() { }
 

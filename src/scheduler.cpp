@@ -63,6 +63,9 @@ namespace {
 			 */
 			{	
 				auto tid = msg.get_content_as<std::tuple<Task::TaskID>>();
+				
+
+
 				sched.cmd_queue().push( Event(Event::TASK_COMPLETED, utils::any(std::move(std::get<0>(tid)))) );
 				break;
 			}
@@ -75,6 +78,7 @@ namespace {
 			{
 				auto desc = msg.get_content_as<std::tuple<Task::TaskID, std::vector<Task::TaskID>>>();
 				LOG(INFO) << "Task '" << std::get<0>(desc) << "' waiting for tasks: " << utils::join(std::get<1>(desc));
+				
 
 
 				break;
@@ -113,23 +117,35 @@ namespace {
 	void task_spawn(Scheduler& sched) {
 		
 		std::shared_ptr<Task> t = sched.next_task();
+		if (!t) { return; }
+
 		LOG(DEBUG) << "Spawning task: " << *t;
 
 		unsigned min = t->min();
 		
+		assert(sched.free_ranks().size() >= min);
+
 		std::vector<int> ranks(min);
-		ranks[0] = 1;
-		for (int i=1; i<min; ++i)
-			ranks[i] = ranks[i-1]+1;
+		auto it = sched.free_ranks().begin();
+
+		for (int i=0; i<min; ++i)
+			ranks[i] = *(it++);
+
+		for (auto rank : ranks) {
+			sched.free_ranks().erase(rank);
+		}
+
+		t = std::make_shared<LocalTask>(*t, ranks);
 
 		make_group(sched, ranks);
 
 		// Send the TID 
-		MPI_Send(const_cast<Task::TaskID*>(&t->tid()), 1, MPI_UNSIGNED_LONG, 1, 0, sched.node_comm());
+		MPI_Send(const_cast<Task::TaskID*>(&t->tid()), 1, MPI_UNSIGNED_LONG, 
+				 ranks.front(), 0, sched.node_comm());
 
 		// Send the name of the function to be invoked 
 		MPI_Send(const_cast<char*>(t->kernel().c_str()), t->kernel().length()+1, MPI_CHAR,
-				 1, 0, sched.node_comm());
+				 ranks.front(), 0, sched.node_comm());
 	}
 
 

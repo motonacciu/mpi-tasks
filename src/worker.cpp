@@ -34,8 +34,11 @@ namespace mpits {
 				 ctx::fcontext_t* 				ctx_ptr, 
 				 void*							stack_ptr,
 				 ctx::guarded_stack_allocator&  alloc) : 
-			m_tid(tid), m_comm(comm), m_ctx_ptr(ctx_ptr), 
-			m_stack_ptr(stack_ptr), m_alloc(alloc) { }
+			m_tid(tid), 
+			m_comm(comm), 
+			m_ctx_ptr(ctx_ptr), 
+			m_stack_ptr(stack_ptr), 
+			m_alloc(alloc) { }
 
 		const MPI_Comm& comm() const { return m_comm; }
 
@@ -52,13 +55,12 @@ namespace mpits {
 
 	typedef std::unique_ptr<TaskDesc> TaskDescPtr;
 
+	typedef std::map<mpits::Task::TaskID, mpits::TaskDescPtr> ActiveTaskList;
+
+	ActiveTaskList 				active_tasks;
+	ActiveTaskList::iterator	curr_active_task = active_tasks.end();
+
 } // end mpits namespace 
-
-
-typedef std::map<mpits::Task::TaskID, mpits::TaskDescPtr> ActiveTaskList;
-
-ActiveTaskList 				active_tasks;
-ActiveTaskList::iterator 	curr_active_task = active_tasks.end();
 
 std::vector<mpits::TaskDescPtr> ctx_clean;
 
@@ -154,7 +156,9 @@ namespace mpits {
 		if (rank==0) {
 			LOG(DEBUG) << "Kernel completed!";
 			// Send the completition message to the scheduler 
-			comm::SendChannel()( comm::Message(comm::Message::TASK_COMPLETED, 0, node_comm(), std::make_tuple(desc.tid())) );
+			comm::SendChannel()( 
+				comm::Message(comm::Message::TASK_COMPLETED, 0, node_comm(), std::make_tuple(desc.tid())) 
+			);
 		}
 
 		assert(curr_ptr && "Curr context pointer is invalid, how did you manage to jump here?");
@@ -249,12 +253,12 @@ namespace mpits {
 					MPI_Bcast(kernel_name, size, MPI_CHAR, 0, comm);
 				} else {
 					// remaining processes in the group retirive:guarded_stack_allocator
-					//  	tid
+					//  -> tid
 					MPI_Bcast(&tid, 1, MPI_UNSIGNED_LONG, 0, comm);
-					//		kernel_name_size
+					//	-> kernel_name_size
 					MPI_Bcast(&size, 1, MPI_INT, 0, comm);
 					kernel_name = new char[size];
-					//		kernel_name 
+					//	-> kernel_name 
 					MPI_Bcast(kernel_name, size, MPI_CHAR, 0, comm);
 				}
 
@@ -307,6 +311,7 @@ namespace mpits {
 				assert(false);
 			}
 
+			// Clears the completed contextes by invoking the constructors 
 			ctx_clean.clear();
 		}
 
@@ -332,9 +337,11 @@ namespace mpits {
 
 		if (rank==0) {
 			// Let the scheduler know that this task is now suspended waiting for tid 
-			comm::SendChannel()( comm::Message(comm::Message::TASK_WAIT, 0, node_comm(), 
-								 std::make_tuple(desc.tid(), std::vector<unsigned long>({tid}))) 
-					);
+			comm::SendChannel()( 
+				comm::Message(comm::Message::TASK_WAIT, 0, node_comm(), 
+							  std::make_tuple(desc.tid(), std::vector<unsigned long>({tid}))
+				) 
+			);
 		}
 
 		auto* ptr = curr_ptr;

@@ -24,6 +24,7 @@ int main(int argc, char* argv[]) {
 	auto tid2 = mpits::spawn("kernel_1", 3, 3);
 
 	mpits::wait_for(tid1);
+	mpits::wait_for(tid2);
 
 	mpits::finalize();
 }

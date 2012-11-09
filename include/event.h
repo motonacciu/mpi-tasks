@@ -124,7 +124,7 @@ struct EventHandler {
 	{
 		std::lock_guard<std::mutex> lock(m_mutex); 
 
-		LOG(DEBUG) << "{@EH} Connecting event lister for '" << Event::evtToStr(evt) << "'";
+		LOG(DEBUG) << "{@EH} Connecting event listener for '" << Event::evtToStr(evt) << "'";
 	
 		// Search for the handle ID 
 		auto fit = m_handlers.find(evt);

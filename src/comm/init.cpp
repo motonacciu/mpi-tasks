@@ -53,10 +53,11 @@ namespace mpits {
 		MPI_Comm_size(node_comm, &node_comm_size);
 		MPI_Comm_rank(node_comm, &node_comm_rank);
 		if (node_comm_rank==0) {
-			LOG(DEBUG) << "Node communicator has " << node_comm_size << " nodes";
+			LOG(DEBUG) << "Node communicator has '" << node_comm_size << "' nodes";
 			LOG(DEBUG) << "Number of nodes detected is '" << hosts.size() << "'";
 			LOG(DEBUG) << utils::join(hosts.begin(), hosts.end(), ",");
 		}
+
 		/* 
 		 * If the rank in the new communicator is 0 then this process will act as 
 		 * a node scheduler, therefore a communicator between scheduler is create

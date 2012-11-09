@@ -25,7 +25,12 @@ struct Scheduler : public Role {
 		m_pids(std::move(pids)),
 		m_rchan(m_handler),
 		m_schan(m_handler),
-		m_thr(std::ref(m_handler)) { }
+		m_thr(std::ref(m_handler)) 
+	{ 
+		int n_workers;
+		MPI_Comm_size(node_comm, &n_workers);
+		for (int rank=1; rank<n_workers; ++rank) { m_free_ranks.insert(rank); }
+	}
 
 	int sched_rank() const {
 		int sched_rank;
@@ -45,11 +50,21 @@ struct Scheduler : public Role {
 		m_task_queue.push_back( task );
 	}
 
+	const std::set<int>& free_ranks() const { return m_free_ranks; }
+	std::set<int>& free_ranks() { return m_free_ranks; }
+
 	std::shared_ptr<Task> next_task() {
 		assert(!m_task_queue.empty());
-		auto t = m_task_queue.front();
-		m_task_queue.pop_front();
-		return t;
+		for(auto it = m_task_queue.begin(), end=m_task_queue.end(); 
+				it != end; ++it) 
+		{
+			if ((*it)->min() <= m_free_ranks.size()) {
+				std::shared_ptr<Task> t = *it;
+				m_task_queue.erase(it);
+				return t;
+			}
+		}
+		return std::shared_ptr<Task>();
 	}
 
 	void join() { m_thr.join(); }
@@ -77,7 +92,9 @@ private:
 
 	std::thread     m_thr;
 
-	std::deque<std::shared_ptr<Task>> m_task_queue;
+	std::list<std::shared_ptr<Task>> m_task_queue;
+
+	std::set<int> m_free_ranks;
 };
 
 } // end namespace mpits 

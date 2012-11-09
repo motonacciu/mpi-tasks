@@ -9,7 +9,7 @@ find_package(MPI REQUIRED)
 find_package(GTest REQUIRED)
 find_package(Threads REQUIRED)
 
-SET(CMAKE_BUILD_TYPE "Release")
+SET(CMAKE_BUILD_TYPE "Debug")
 
 set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS})
 

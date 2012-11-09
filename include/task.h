@@ -7,14 +7,21 @@
 
 namespace mpits {
 
+
 struct Task {
+	
+	enum Status { TS_READY, TS_RUN, TS_WAIT };
 
 	typedef unsigned long TaskID;
+
 
 	const TaskID& taskID() const { return m_tid; }
 
 	Task(const TaskID& tid, const std::string& kernel, unsigned min, unsigned max) 
-		: m_tid(tid), m_kernel(kernel), m_min(min), m_max(max) { }
+		: m_tid(tid), 
+		  m_kernel(kernel), 
+		  m_min(min), 
+		  m_max(max) { }
 
 	const Task::TaskID& tid() const { return m_tid; }
 
@@ -28,6 +35,7 @@ private:
 
 	TaskID 			m_tid;
 	std::string 	m_kernel;
+
 	unsigned 		m_min;
 	unsigned 		m_max;
 };
@@ -38,20 +46,25 @@ struct RemoteTask: public Task {
 
 };
 
-//struct LocalTask: public Task {
-//	
-//	typedef std::vector<int> RankList;
-//
-//	LocalTask(const Task::TaskID& tid, const RankList& pids) :
-//		Task(tid), m_pids(pids) { }
-//
-//	const RankList& pids() const { return m_pids; }
-//
-//private:
-//
-//	RankList m_pids;
-//
-//};
+
+struct LocalTask: public Task {
+	
+	typedef std::vector<int> RankList;
+
+	LocalTask(const Task& tid, const RankList& pids) :
+		Task(tid), m_pids(pids) { }
+
+	const RankList& pids() const { return m_pids; }
+
+	Task::Status& status() { return m_ts; }
+	const Task::Status& status() const { return m_ts; }
+
+private:
+
+	RankList m_pids;
+	Task::Status m_ts;
+
+};
 
 } // end namespace mpits 
 

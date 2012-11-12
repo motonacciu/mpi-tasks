@@ -31,3 +31,10 @@ TEST(Message, CreationString) {
 	EXPECT_EQ("host1", m.get_content_as<std::string>());
 
 }
+
+TEST(Message, ComplexMessage) {
+
+	Message m(Message::GROUP_CREATE, 1, MPI_COMM_WORLD, std::make_tuple(10ul, std::vector<int>({10, 20})));
+	EXPECT_EQ(44u, m.size());
+
+}

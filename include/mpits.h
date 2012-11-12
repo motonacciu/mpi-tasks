@@ -13,4 +13,6 @@ void wait_for(const Task::TaskID& tid);
 
 void finalize();
 
+Task::TaskID get_tid();
+
 } // end namespace mpits 

@@ -41,12 +41,12 @@ void kernel_1(intptr_t comm_ptr) {
 	if (rank==0) {
 		std::cout << mpits::utils::join(ret, "-") << std::endl;
 	}
-
 	
-	mpits::wait_for(2);
-	sleep(1);
+	mpits::wait_for(5);
 
 	// mpits::Task::TaskID id = mpits::spawn("kernel_1", 2, 2);
+	
+	LOG(INFO) << "Task " << mpits::get_tid() << " Exiting";
 
 	mpits::finalize();
 }

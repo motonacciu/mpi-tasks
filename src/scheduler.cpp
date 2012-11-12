@@ -10,6 +10,16 @@ namespace {
 
 	void task_spawn(Scheduler& sched);
 
+	template <class Functor>
+	inline void resume_workers(Scheduler& sched, const std::vector<int>& ranks, const Functor& func) {
+
+		for(int idx : ranks) {
+			kill(sched.pid_list()[idx-1].second, SIGCONT);
+			func(idx);
+		}
+
+	}
+
 	/**
 	 * Creates a task and push it into the task queue hosted by the 
 	 * scheduler 
@@ -42,8 +52,8 @@ namespace {
 
 		using namespace comm;
 
-
 		switch(msg.msg_id()) {
+
 		case Message::TASK_CREATE: 
 			{
 
@@ -101,6 +111,26 @@ namespace {
 				auto& active_tasks = sched.active_tasks();
 				auto fit = active_tasks.find(tid);
 				assert(fit != active_tasks.end());
+
+
+				auto resume_worker = 
+					[&sched, tid](const Task::TaskID& cur) { 
+						auto& t = sched.active_tasks()[tid];
+
+						auto msg = [&](const int& idx) { 
+							MPI_Send(const_cast<Task::TaskID*>(&tid), 1, MPI_UNSIGNED_LONG, 
+									 sched.pid_list()[idx-1].first, 3, sched.node_comm());
+						};
+
+						resume_workers(sched, t->ranks(), msg);
+						sleep(1);
+						return true;
+					};
+
+				if (sched.is_completed(tid)) {
+					resume_worker;
+					break;
+				}
 			
 				// Make the pids available for successive tasks 
 				sched.release_pids(fit->second->ranks()); 
@@ -108,11 +138,7 @@ namespace {
 				sched.handler().connect(
 						Event::TASK_COMPLETED, 
 						std::function<bool (const Task::TaskID&)>(
-							[&sched, tid](const Task::TaskID& cur) { 
-								auto& t = sched.active_tasks()[tid];
-								wakeup_group( sched, t->ranks(), tid );
-								return true;
-							}
+							resume_worker		
 						),
 						// Filter the particular event 
 						std::function<bool (const Task::TaskID&)>(
@@ -135,32 +161,12 @@ namespace {
 		return false;
 	}
 
-	// Resume group
-	void wakeup_group(const Scheduler& sched, const std::vector<int>& ranks, const Task::TaskID& tid) {
-			
-		for(int idx : ranks) {
-			kill(sched.pid_list()[idx-1].second, SIGCONT);
-			MPI_Send(const_cast<Task::TaskID*>(&tid), 1, MPI_UNSIGNED_LONG, 
-					 sched.pid_list()[idx-1].first, 3, sched.node_comm());
-		}
-	}
-
-	void make_group(const Scheduler& sched, const std::vector<int>& ranks) {
-			
-		for(int idx : ranks) {
-			kill(sched.pid_list()[idx-1].second, SIGCONT);
-			MPI_Send(const_cast<int*>(&ranks.front()), ranks.size(), 
-					 MPI_INT, sched.pid_list()[idx-1].first, 1, sched.node_comm()
-			);
-		}
-	}
-
 	/**
 	 * TaskSpawn takes care of actually activating a task 
 	 */
 	void task_spawn(Scheduler& sched) {
 		
-		std::shared_ptr<Task> t = sched.next_task();
+		auto t = sched.next_task();
 		if (!t) { return; }
 
 		LOG(DEBUG) << "Spawning task: " << *t;
@@ -180,7 +186,13 @@ namespace {
 		// Store the task as an Active task
 		sched.active_tasks().insert( std::make_pair(t->tid(), std::make_shared<LocalTask>(*t, ranks)) );
 
-		make_group(sched, ranks);
+		auto msg = [&](const int& idx) { 
+			MPI_Send(const_cast<int*>(&ranks.front()), ranks.size(), 
+					 MPI_INT, sched.pid_list()[idx-1].first, 1, sched.node_comm()
+			);
+		};
+
+		resume_workers(sched, ranks, msg);
 
 		// Send the TID 
 		MPI_Send(const_cast<Task::TaskID*>(&t->tid()), 1, MPI_UNSIGNED_LONG, 

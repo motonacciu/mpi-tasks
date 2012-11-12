@@ -51,6 +51,14 @@ namespace mpits {
 
 	}
 
+
+	Task::TaskID get_tid() {
+			
+		auto& r = get_role();
+		r.get_tid();
+		
+	}
+
 	void finalize() {
 			
 		auto& r = get_role();

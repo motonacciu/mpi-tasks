@@ -21,6 +21,8 @@ struct Worker : public Role {
 
 	void wait_for(const Task::TaskID& tid);
 
+	virtual Task::TaskID get_tid();
+
 	void finalize();
 
 private:

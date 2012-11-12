@@ -114,7 +114,7 @@ namespace {
 		return pgroup;
 	}
 
-	void call_back(int sig) { LOG(DEBUG) << "Time to wakeup"; }
+	void call_back(int sig) { }
 
 } // end anonymous namespace 
 
@@ -123,6 +123,14 @@ namespace mpits {
 
 	ctx::fcontext_t fcw;
 	ctx::fcontext_t* curr_ptr=nullptr;
+
+	Task::TaskID Worker::get_tid() {
+		assert(curr_active_task != active_tasks.end() && "curr task pointer is not valid!");
+
+		TaskDesc& desc = *curr_active_task->second;
+
+		return desc.tid();
+	}
 
 	// Send the request to the Scheduler, wait for the TaskID and return 
 	Task::TaskID Worker::spawn(const std::string& kernel, unsigned min, unsigned max) {
@@ -154,7 +162,6 @@ namespace mpits {
 
 		// kernel completition
 		if (rank==0) {
-			LOG(DEBUG) << "Kernel completed!";
 			// Send the completition message to the scheduler 
 			comm::SendChannel()( 
 				comm::Message(comm::Message::TASK_COMPLETED, 0, node_comm(), std::make_tuple(desc.tid())) 
@@ -298,8 +305,7 @@ namespace mpits {
 
 			case 3:	// Resume Worker 
 			{
-				LOG(INFO) << "RESUME!";
-
+				LOG(INFO) << "RESUME";
 				Task::TaskID tid;
 				MPI_Recv(&tid, 1, MPI_UNSIGNED_LONG, 0, 3, node_comm(), MPI_STATUS_IGNORE);
 				
@@ -311,7 +317,8 @@ namespace mpits {
 				curr_active_task = active_tasks.find(tid);
 				assert(curr_active_task != active_tasks.end());
 
-				ctx::jump_fcontext( &fcw, curr_ptr, 0);
+				ctx::jump_fcontext( &fcw, curr_ptr, 0 );
+
 				break;
 			}
 

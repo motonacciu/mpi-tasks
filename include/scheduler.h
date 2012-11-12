@@ -61,6 +61,14 @@ struct Scheduler : public Role {
 		m_ready_task_queue.push_back( task );
 	}
 
+	bool is_completed(const Task::TaskID& tid) {
+		auto fit = std::find_if(m_ready_task_queue.begin(), m_ready_task_queue.end(), 
+						[&](const TaskPtr& cur) { return cur->tid() == tid; });
+
+		return fit == m_ready_task_queue.end() && 
+			   m_active_tasks.find(tid) == m_active_tasks.end();
+	}
+
 	const std::set<int>& free_ranks() const { return m_free_ranks; }
 	std::set<int>& free_ranks() { return m_free_ranks; }
 

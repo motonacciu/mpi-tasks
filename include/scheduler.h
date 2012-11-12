@@ -47,7 +47,7 @@ struct Scheduler : public Role {
 
 	void release_pids(const LocalTask::RankList& ranks) { 
 		for (auto rank : ranks) {
-			assert( m_free_ranks.find(rank) == m_free_ranks.end() );
+			// assert( m_free_ranks.find(rank) == m_free_ranks.end() );
 			m_free_ranks.insert(rank);
 		}
 	}

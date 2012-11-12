@@ -8,6 +8,8 @@ namespace {
 
 	void wakeup_group(const Scheduler& sched, const std::vector<int>& ranks, const Task::TaskID& tid);
 
+	void task_spawn(Scheduler& sched);
+
 	/**
 	 * Creates a task and push it into the task queue hosted by the 
 	 * scheduler 
@@ -99,6 +101,9 @@ namespace {
 				auto& active_tasks = sched.active_tasks();
 				auto fit = active_tasks.find(tid);
 				assert(fit != active_tasks.end());
+			
+				// Make the pids available for successive tasks 
+				sched.release_pids(fit->second->ranks()); 
 
 				sched.handler().connect(
 						Event::TASK_COMPLETED, 
@@ -116,8 +121,10 @@ namespace {
 							}
 						)
 					);
-				LOG(INFO) << "OK";
 				
+				// try to schedule a new task 
+				task_spawn(sched);
+
 				break;
 			}
 

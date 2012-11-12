@@ -44,7 +44,7 @@ void kernel_1(intptr_t comm_ptr) {
 
 	
 	mpits::wait_for(2);
-	sleep(3);
+	sleep(1);
 
 	// mpits::Task::TaskID id = mpits::spawn("kernel_1", 2, 2);
 

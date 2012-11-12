@@ -8,4 +8,4 @@ MESSAGE(GROUP_CREATE, 	std::vector<int>)
 MESSAGE(TASK_CREATE, 	std::string, unsigned, unsigned)
 MESSAGE(TASK_COMPLETED, unsigned long)
 
-MESSAGE(TASK_WAIT, 		unsigned long, std::vector<unsigned long>)
+MESSAGE(TASK_WAIT, 		unsigned long, unsigned long)

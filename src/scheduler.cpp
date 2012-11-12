@@ -6,6 +6,8 @@ namespace mpits {
 
 namespace {
 
+	void wakeup_group(const Scheduler& sched, const std::vector<int>& ranks, const Task::TaskID& tid);
+
 	/**
 	 * Creates a task and push it into the task queue hosted by the 
 	 * scheduler 
@@ -22,7 +24,7 @@ namespace {
 		sched.enqueue_task( task );
 		
 		LOG(INFO) << "Created Task: " << *task; 
-		
+
 		// create an event 
 		sched.cmd_queue().push( Event(Event::TASK_CREATED, utils::any(std::move(tid))) );
 
@@ -62,11 +64,23 @@ namespace {
 			 * we all generate an internal event
 			 */
 			{	
-				auto tid = msg.get_content_as<std::tuple<Task::TaskID>>();
+				auto desc = msg.get_content_as<std::tuple<Task::TaskID>>();
 				
+				Task::TaskID tid = std::get<0>(desc);
+				auto& active_tasks = sched.active_tasks();
+				auto fit = active_tasks.find(tid);
+				assert(fit != active_tasks.end());
 
+				// Make the pids available for successive tasks 
+				sched.release_pids(fit->second->ranks()); 
 
-				sched.cmd_queue().push( Event(Event::TASK_COMPLETED, utils::any(std::move(std::get<0>(tid)))) );
+				// Remove the task
+				active_tasks.erase(fit);
+
+				sched.cmd_queue().push(
+					Event(Event::TASK_COMPLETED, utils::any(std::move(tid))) 
+				);
+
 				break;
 			}
 
@@ -76,11 +90,34 @@ namespace {
 			 * up, therefore we register an event handler to wake up the worker upon completition
 			 */
 			{
-				auto desc = msg.get_content_as<std::tuple<Task::TaskID, std::vector<Task::TaskID>>>();
-				LOG(INFO) << "Task '" << std::get<0>(desc) << "' waiting for tasks: " << utils::join(std::get<1>(desc));
+				auto desc = msg.get_content_as<std::tuple<Task::TaskID, Task::TaskID>>();
+				LOG(INFO) << "Task '" << std::get<0>(desc) 
+					      << "' waiting for tasks: " << std::get<1>(desc);
 				
+				Task::TaskID tid = std::get<0>(desc);
 
+				auto& active_tasks = sched.active_tasks();
+				auto fit = active_tasks.find(tid);
+				assert(fit != active_tasks.end());
 
+				sched.handler().connect(
+						Event::TASK_COMPLETED, 
+						std::function<bool (const Task::TaskID&)>(
+							[&sched, tid](const Task::TaskID& cur) { 
+								auto& t = sched.active_tasks()[tid];
+								wakeup_group( sched, t->ranks(), tid );
+								return true;
+							}
+						),
+						// Filter the particular event 
+						std::function<bool (const Task::TaskID&)>(
+							[=](const Task::TaskID& cur) { 
+								return cur == std::get<1>(desc); 
+							}
+						)
+					);
+				LOG(INFO) << "OK";
+				
 				break;
 			}
 
@@ -131,11 +168,10 @@ namespace {
 		for (int i=0; i<min; ++i)
 			ranks[i] = *(it++);
 
-		for (auto rank : ranks) {
-			sched.free_ranks().erase(rank);
-		}
+		for (auto rank : ranks) { sched.free_ranks().erase(rank); }
 
-		t = std::make_shared<LocalTask>(*t, ranks);
+		// Store the task as an Active task
+		sched.active_tasks().insert( std::make_pair(t->tid(), std::make_shared<LocalTask>(*t, ranks)) );
 
 		make_group(sched, ranks);
 

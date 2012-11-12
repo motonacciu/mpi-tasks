@@ -48,7 +48,7 @@ namespace mpits {
 
 		~TaskDesc() {
 			MPI_Comm_free(&m_comm);
-			m_alloc.deallocate(m_stack_ptr, ctx::guarded_stack_allocator::minimum_stacksize());
+			m_alloc.deallocate(m_stack_ptr, ctx::guarded_stack_allocator::maximum_stacksize());
 		}
 	
 	};
@@ -181,7 +181,7 @@ namespace mpits {
 		
 		// Initialize the context 
 		ctx::guarded_stack_allocator alloc;
-        std::size_t size = ctx::guarded_stack_allocator::minimum_stacksize();
+        std::size_t size = ctx::guarded_stack_allocator::maximum_stacksize();
         
 		bool stop=false;
 
@@ -210,6 +210,8 @@ namespace mpits {
 
 			case 1:  // Spawn task 
 			{
+				LOG(INFO) << "SPAWN!";
+
 				int size;
 				// we expect to receive a list of integers representing 
 				// the process ranks which will form the group 
@@ -296,6 +298,8 @@ namespace mpits {
 
 			case 3:	// Resume Worker 
 			{
+				LOG(INFO) << "RESUME!";
+
 				Task::TaskID tid;
 				MPI_Recv(&tid, 1, MPI_UNSIGNED_LONG, 0, 3, node_comm(), MPI_STATUS_IGNORE);
 				
@@ -303,6 +307,10 @@ namespace mpits {
 				assert(fit != active_tasks.end() && "Scheduler required to resume completed task");
 
 				curr_ptr = fit->second->ctx();
+				
+				curr_active_task = active_tasks.find(tid);
+				assert(curr_active_task != active_tasks.end());
+
 				ctx::jump_fcontext( &fcw, curr_ptr, 0);
 				break;
 			}
@@ -316,6 +324,7 @@ namespace mpits {
 		}
 
 		LOG(INFO) << "\{W@} Worker Exiting!";
+
 		dlclose(handle);
 		MPI_Finalize();
 
@@ -334,12 +343,13 @@ namespace mpits {
 
 		int rank;
 		MPI_Comm_rank(desc.comm(), &rank);
+		MPI_Barrier(desc.comm());
 
 		if (rank==0) {
 			// Let the scheduler know that this task is now suspended waiting for tid 
 			comm::SendChannel()( 
-				comm::Message(comm::Message::TASK_WAIT, 0, node_comm(), 
-							  std::make_tuple(desc.tid(), std::vector<unsigned long>({tid}))
+				comm::Message(
+					comm::Message::TASK_WAIT, 0, node_comm(), std::make_tuple(desc.tid(), tid)
 				) 
 			);
 		}

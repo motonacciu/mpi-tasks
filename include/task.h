@@ -40,6 +40,8 @@ private:
 	unsigned 		m_max;
 };
 
+typedef std::shared_ptr<Task> TaskPtr;
+
 
 struct RemoteTask: public Task {
 
@@ -51,20 +53,22 @@ struct LocalTask: public Task {
 	
 	typedef std::vector<int> RankList;
 
-	LocalTask(const Task& tid, const RankList& pids) :
-		Task(tid), m_pids(pids) { }
+	LocalTask(const Task& tid, const RankList& ranks) :
+		Task(tid), m_ranks(ranks) { }
 
-	const RankList& pids() const { return m_pids; }
+	const RankList& ranks() const { return m_ranks; }
 
 	Task::Status& status() { return m_ts; }
 	const Task::Status& status() const { return m_ts; }
 
 private:
 
-	RankList m_pids;
+	RankList m_ranks;
 	Task::Status m_ts;
 
 };
+
+typedef std::shared_ptr<LocalTask> LocalTaskPtr;
 
 } // end namespace mpits 
 

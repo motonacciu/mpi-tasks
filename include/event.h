@@ -122,7 +122,7 @@ struct EventHandler {
 	 			 	 const std::function<bool (const T&...)>& 	handle, 
 				 	 const std::function<bool (const T&...)>& 	filter ) 
 	{
-		std::lock_guard<std::mutex> lock(m_mutex); 
+		std::lock_guard<std::recursive_mutex> lock(m_mutex); 
 
 		LOG(DEBUG) << "{@EH} Connecting event listener for '" << Event::evtToStr(evt) << "'";
 	
@@ -156,13 +156,13 @@ private:
 	void process_event(Event const& evt);
 	void disconnect_nts(HandleID const& id);
 
-	std::mutex 		m_mutex;
+	std::recursive_mutex 	m_mutex;
 
-	EventQueue 		m_event_queue;
-	HandleMap 		m_handlers;
+	EventQueue 				m_event_queue;
+	HandleMap 				m_handlers;
 
-	HandleID 		m_handler_count;
-	HanlderRegister m_handle_reg;
+	HandleID 				m_handler_count;
+	HanlderRegister 		m_handle_reg;
 
 };
 

@@ -53,7 +53,7 @@ static const int all = -1;
 template <class T>
 struct msg_content_traits {
 
-	static Bytes to_bytes(const T& v) { 
+	static inline Bytes to_bytes(const T& v) { 
 		std::ostringstream ss;
     	boost::archive::text_oarchive oa(ss);
     	oa << v;
@@ -61,7 +61,7 @@ struct msg_content_traits {
     	return std::move(Bytes(str.begin(), str.end()));
 	}
 
-	static T from_bytes(const Bytes& bytes) {
+	static inline T from_bytes(const Bytes& bytes) {
 		std::istringstream iss( std::string(bytes.begin(), bytes.end()) );
 		T ret;
 		boost::archive::text_iarchive ia(iss);

@@ -73,7 +73,7 @@ struct Scheduler : public Role {
 	std::set<int>& free_ranks() { return m_free_ranks; }
 
 	TaskPtr next_task() {
-		assert(!m_ready_task_queue.empty());
+		if(m_ready_task_queue.empty()) { return TaskPtr(); }
 
 		for(auto it = m_ready_task_queue.begin(), end=m_ready_task_queue.end(); 
 				it != end; ++it) 

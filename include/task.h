@@ -31,6 +31,8 @@ struct Task {
 
 	unsigned max() const { return m_max; }
 
+	virtual ~Task() { }
+
 private:
 
 	TaskID 			m_tid;

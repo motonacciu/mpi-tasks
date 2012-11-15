@@ -43,6 +43,16 @@ namespace {
 		return tid;
 	}
 
+	void resume_task(Scheduler& sched, const Task::TaskID& tid) {
+		auto& t = sched.active_tasks()[tid];
+
+		auto msg = [&](const int& idx) { 
+		MPI_Send(const_cast<Task::TaskID*>(&tid), 1, MPI_UNSIGNED_LONG, 
+			 sched.pid_list()[idx-1].first, 3, sched.node_comm());
+		};
+
+		resume_workers(sched, t->ranks(), msg);
+	}
 
 	/** 
 	 * Handle incoming messages to the scheduler by implementeing their 
@@ -112,23 +122,8 @@ namespace {
 				auto fit = active_tasks.find(tid);
 				assert(fit != active_tasks.end());
 
-
-				auto resume_worker = 
-					[&sched, tid](const Task::TaskID& cur) { 
-						auto& t = sched.active_tasks()[tid];
-
-						auto msg = [&](const int& idx) { 
-							MPI_Send(const_cast<Task::TaskID*>(&tid), 1, MPI_UNSIGNED_LONG, 
-									 sched.pid_list()[idx-1].first, 3, sched.node_comm());
-						};
-
-						resume_workers(sched, t->ranks(), msg);
-						sleep(1);
-						return true;
-					};
-
-				if (sched.is_completed(tid)) {
-					resume_worker;
+				if (sched.is_completed(std::get<1>(desc))) {
+					resume_task(sched, tid);
 					break;
 				}
 			
@@ -138,7 +133,13 @@ namespace {
 				sched.handler().connect(
 						Event::TASK_COMPLETED, 
 						std::function<bool (const Task::TaskID&)>(
-							resume_worker		
+							[&sched, tid](const Task::TaskID& cur) {
+								auto fit = sched.active_tasks().find(tid);
+								assert(fit != sched.active_tasks().end());
+								sched.enqueue_task( fit->second );
+								sched.active_tasks().erase(fit);
+								return true;
+							}
 						),
 						// Filter the particular event 
 						std::function<bool (const Task::TaskID&)>(
@@ -166,13 +167,22 @@ namespace {
 	 */
 	void task_spawn(Scheduler& sched) {
 		
+		LOG(INFO) << "try spawn";
 		auto t = sched.next_task();
+
 		if (!t) { return; }
+
+		if (LocalTaskPtr lt = std::dynamic_pointer_cast<LocalTask>(t)) {
+			LOG(DEBUG) << "Resuming task: " << *t;
+			sched.active_tasks().insert( {lt->tid(), lt} );
+			resume_task(sched, lt->tid());
+			return ;
+		}
 
 		LOG(DEBUG) << "Spawning task: " << *t;
 
 		unsigned min = t->min();
-		
+
 		assert(sched.free_ranks().size() >= min);
 
 		std::vector<int> ranks(min);
@@ -220,10 +230,15 @@ void Scheduler::do_work() {
 	m_handler.connect(
 			Event::TASK_CREATED, 
 			std::function<bool (const Task::TaskID&)>(
-				[&](const Task::TaskID& cur) { 
-					task_spawn(*this);
-					return false;
-				}
+				[&](const Task::TaskID& cur) { task_spawn(*this); return false; }
+			)
+		);
+
+	// connect handler for task_created 
+	m_handler.connect(
+			Event::TASK_COMPLETED, 
+			std::function<bool (const Task::TaskID&)>(
+				[&](const Task::TaskID& cur) { task_spawn(*this); return false; }
 			)
 		);
 
@@ -231,6 +246,9 @@ void Scheduler::do_work() {
 		Event(Event::RECV_CHN_PROBE, 
 			  utils::any(10ul, std::vector<MPI_Comm>({node_comm()}))) 
 		);
+
+	// Makes sure that all the handler are attached before the workers 
+	MPI_Barrier(MPI_COMM_WORLD);
 }
 
 Task::TaskID Scheduler::spawn(const std::string& kernel, unsigned min, unsigned max) {
@@ -238,6 +256,9 @@ Task::TaskID Scheduler::spawn(const std::string& kernel, unsigned min, unsigned 
 }
 
 void Scheduler::wait_for(const Task::TaskID& tid) {
+
+	// need to acquire lock on the event handler 
+	if (is_completed(tid)) { return; }
 
 	std::mutex m;
 	std::condition_variable cond_var;

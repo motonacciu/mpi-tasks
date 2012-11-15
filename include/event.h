@@ -97,7 +97,7 @@ struct EventHandler {
 	typedef std::tuple<HandleID, utils::any, utils::any> HandlePair;
 	typedef std::shared_ptr<HandlePair> 				HandlePairPtr; 
 	
-	typedef std::vector<HandlePairPtr> 					HandlersList;
+	typedef std::list<HandlePairPtr> 					HandlersList;
 	typedef std::map<Event::EventType, HandlersList> 	HandleMap;
 	
 	typedef std::map<HandleID, Event::EventType>		HanlderRegister;
@@ -139,7 +139,7 @@ struct EventHandler {
 							std::move(filter)
 						);
 
-		fit->second.push_back( handlePtr );
+		fit->second.push_front( handlePtr );
 	
 		m_handle_reg.insert( {m_handler_count, evt} );
 		return m_handler_count;

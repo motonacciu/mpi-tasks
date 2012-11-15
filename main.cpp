@@ -21,8 +21,11 @@ int main(int argc, char* argv[]) {
 		auto tid1 = mpits::spawn("kernel_1", 2, 2);
 	}
 
-	mpits::wait_for(4);
 
-	sleep(2);
+	mpits::wait_for(4);
+	mpits::wait_for(1);
+	mpits::wait_for(2);
+	mpits::wait_for(3);
+
 	mpits::finalize();
 }

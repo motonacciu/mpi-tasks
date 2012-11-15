@@ -199,6 +199,8 @@ namespace mpits {
 			::exit(1);
 		}
 
+		MPI_Barrier(MPI_COMM_WORLD);
+
 		while (!stop) {
 			LOG(DEBUG) << "Sleep";
 
